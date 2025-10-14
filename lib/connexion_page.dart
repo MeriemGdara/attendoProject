@@ -179,7 +179,7 @@ class _ConnexionPageState extends State<ConnexionPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(width: 100, height: 1.5, color: Colors.black54),
+                          Container(width: 70, height: 1.5, color: Colors.black54),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: GestureDetector(
