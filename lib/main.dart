@@ -2,9 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'welcomepage.dart';
 import 'connexion_page.dart';
-import 'creer_un_compte_page.dart'; //
+import 'creer_un_compte_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const AttendoApp());
 }
 
@@ -79,8 +86,7 @@ class _IntroPageState extends State<IntroPage> {
             )
                 : const CircularProgressIndicator(color: Colors.white),
           ),
-
-          // Bouton "Passer" (optionnel)
+          // Bouton "Passer"
           Positioned(
             bottom: 30,
             right: 20,

@@ -1,21 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class ConnexionPage extends StatelessWidget {
+class ConnexionPage extends StatefulWidget {
   const ConnexionPage({super.key});
+
+  @override
+  _ConnexionPageState createState() => _ConnexionPageState();
+}
+
+class _ConnexionPageState extends State<ConnexionPage> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  void login() async {
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+          email: emailController.text.trim(),
+          password: passwordController.text.trim());
+
+      // Naviguer vers la page principale
+      Navigator.pushReplacementNamed(context, '/home');
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message ?? "Erreur inconnue")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF6DD5C9), // Couleur de fond turquoise
+      backgroundColor: const Color(0xFF6DD5C9),
       body: Column(
         children: [
-          // Section turquoise en haut
           Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
-              color: Color(0xFF6DD5C9),
-            ),
+            decoration: const BoxDecoration(color: Color(0xFF6DD5C9)),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -37,7 +59,6 @@ class ConnexionPage extends StatelessWidget {
               ),
             ),
           ),
-          // Conteneur blanc avec coins arrondis
           Expanded(
             child: Container(
               width: double.infinity,
@@ -50,7 +71,8 @@ class ConnexionPage extends StatelessWidget {
               ),
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -64,35 +86,41 @@ class ConnexionPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 25),
                       TextField(
+                        controller: emailController,
                         style: GoogleFonts.fredoka(),
                         decoration: InputDecoration(
                           hintText: "Email",
                           hintStyle: GoogleFonts.fredoka(color: Colors.black54),
-                          prefixIcon: const Icon(Icons.email_outlined, color: Colors.black54),
+                          prefixIcon:
+                          const Icon(Icons.email_outlined, color: Colors.black54),
                           filled: true,
                           fillColor: const Color(0xFFF5F5F5),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                          contentPadding:
+                          const EdgeInsets.symmetric(vertical: 18),
                         ),
                       ),
                       const SizedBox(height: 18),
                       TextField(
+                        controller: passwordController,
                         obscureText: true,
                         style: GoogleFonts.fredoka(),
                         decoration: InputDecoration(
                           hintText: "Mot de passe",
                           hintStyle: GoogleFonts.fredoka(color: Colors.black54),
-                          prefixIcon: const Icon(Icons.lock_outline, color: Colors.black54),
+                          prefixIcon:
+                          const Icon(Icons.lock_outline, color: Colors.black54),
                           filled: true,
                           fillColor: const Color(0xFFF5F5F5),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                          contentPadding:
+                          const EdgeInsets.symmetric(vertical: 18),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -129,7 +157,7 @@ class ConnexionPage extends StatelessWidget {
                           ],
                         ),
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: login,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
@@ -151,11 +179,7 @@ class ConnexionPage extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            width: 100,
-                            height: 1.5,
-                            color: Colors.black54,
-                          ),
+                          Container(width: 100, height: 1.5, color: Colors.black54),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: GestureDetector(
@@ -172,11 +196,7 @@ class ConnexionPage extends StatelessWidget {
                               ),
                             ),
                           ),
-                          Container(
-                            width: 80,
-                            height: 1.5,
-                            color: Colors.black54,
-                          ),
+                          Container(width: 80, height: 1.5, color: Colors.black54),
                         ],
                       ),
                     ],
