@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'welcomePage.dart';  // Import de la page de bienvenue pour la navigation
 
 void main() {
   runApp(const AttendoApp());
@@ -13,7 +14,7 @@ class AttendoApp extends StatelessWidget {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Attendo',
-      home: IntroPage(),
+      home: IntroPage(),  // Page de démarrage
     );
   }
 }
@@ -33,15 +34,29 @@ class _IntroPageState extends State<IntroPage> {
     super.initState();
     _controller = VideoPlayerController.asset('assets/videos/intro.mp4')
       ..initialize().then((_) {
-        _controller.play();
-        _controller.setLooping(true);
-        setState(() {});
+        _controller.play();  // Joue la vidéo une seule fois
+        _controller.setLooping(false);  // Empêche la boucle
+        _controller.addListener(_videoListener);  // Ajoute un listener pour détecter la fin
+        setState(() {});  // Met à jour l'UI
       });
+  }
+
+  void _videoListener() {
+    if (_controller.value.isInitialized &&  // Vérifie si la vidéo est initialisée
+        !_controller.value.isPlaying &&  // Vérifie si la vidéo n'est plus en train de jouer
+        _controller.value.position >= _controller.value.duration) {  // Vérifie si la vidéo est terminée
+      // Redirige vers WelcomePage une fois la vidéo terminée
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const WelcomePage()),
+      );
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller.removeListener(_videoListener);  // Supprime le listener
+    _controller.dispose();  // Libère les ressources
     super.dispose();
   }
 
