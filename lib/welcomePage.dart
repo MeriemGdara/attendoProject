@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -21,9 +22,9 @@ class WelcomePage extends StatelessWidget {
               const SizedBox(height: 10),
 
               // Slogan
-              const Text(
+              Text(
                 'Connect, Track, Attend',
-                style: TextStyle(
+                style: GoogleFonts.fredoka(
                   fontSize: 25,
                   color: Colors.black54,
                   fontWeight: FontWeight.w500,
@@ -54,7 +55,7 @@ class WelcomePage extends StatelessWidget {
                 ),
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/connexion');  // Navigation vers ConnexionPage
+                    Navigator.pushNamed(context, '/connexion');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
@@ -63,9 +64,9 @@ class WelcomePage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(25),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Commencer maintenant',
-                    style: TextStyle(
+                    style: GoogleFonts.fredoka(
                       color: Colors.black87,
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
