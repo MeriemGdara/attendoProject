@@ -1,24 +1,7 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const AttendoApp());
-}
-
-class AttendoApp extends StatelessWidget {
-  const AttendoApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Attendo',
-      home: const welcomePage(),
-    );
-  }
-}
-
-class welcomePage extends StatelessWidget {
-  const welcomePage({super.key});
+class WelcomePage extends StatelessWidget {
+  const WelcomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -30,19 +13,18 @@ class welcomePage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 🔹 Logo image
+              // Logo image
               Image.asset(
                 'assets/images/ATTEND.png',
                 height: 350,
               ),
               const SizedBox(height: 10),
 
-              // 🔹 Slogan
+              // Slogan
               const Text(
                 'Connect, Track, Attend',
                 style: TextStyle(
-                  fontSize: 25
-                  ,
+                  fontSize: 25,
                   color: Colors.black54,
                   fontWeight: FontWeight.w500,
                 ),
@@ -50,7 +32,7 @@ class welcomePage extends StatelessWidget {
 
               const SizedBox(height: 30),
 
-              // 🔹 Bouton "Commencer maintenant"
+              // Bouton "Commencer maintenant"
               Container(
                 width: 270,
                 height: 50,
@@ -72,7 +54,7 @@ class welcomePage extends StatelessWidget {
                 ),
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/connexion');
+                    Navigator.pushNamed(context, '/connexion');  // Navigation vers ConnexionPage
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
