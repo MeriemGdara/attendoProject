@@ -5,6 +5,8 @@ import 'connexion_page.dart';
 import 'creer_un_compte_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'dashboard_etudiant.dart';
+import 'dashboard_enseignant.dart';
 
 
 void main() async {
@@ -29,6 +31,8 @@ class AttendoApp extends StatelessWidget {
         '/welcome': (context) => const WelcomePage(),
         '/connexion': (context) => const ConnexionPage(),
         '/creer_compte': (context) => const CreerComptePage(),
+        '/dashboard_etudiant': (context) => const DashboardEtudiant(),
+        '/dashboard_enseignant': (context) => const DashboardEnseignant(),
       },
     );
   }

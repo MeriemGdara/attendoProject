@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dashboard_etudiant.dart';
+import 'dashboard_enseignant.dart';
 
 class ConnexionPage extends StatefulWidget {
   const ConnexionPage({super.key});
@@ -10,18 +13,72 @@ class ConnexionPage extends StatefulWidget {
 }
 
 class _ConnexionPageState extends State<ConnexionPage> {
+  // ---------------------------------------------------------
+  // 🔹 1️⃣ Contrôleurs des champs
+  // ---------------------------------------------------------
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  // ---------------------------------------------------------
+  // 🔹 2️⃣ Fonction de connexion avec contrôle de saisie
+  // ---------------------------------------------------------
   void login() async {
-    try {
-      UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(
-          email: emailController.text.trim(),
-          password: passwordController.text.trim());
+    String email = emailController.text.trim();
+    String password = passwordController.text.trim();
 
-      // Naviguer vers la page principale
-      Navigator.pushReplacementNamed(context, '/home');
+    // ✅ Vérification champs vides
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Tous les champs doivent être remplis")),
+      );
+      return;
+    }
+
+    // ✅ Vérification format email
+    final emailRegex = RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$");
+    if (!emailRegex.hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email invalide")),
+      );
+      return;
+    }
+
+    try {
+      // 🔹 Authentification Firebase
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      // 🔹 Récupération du rôle depuis Firestore
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Utilisateur introuvable.")),
+        );
+        return;
+      }
+
+      String role = userDoc['role'];
+
+      // 🔹 Redirection selon le rôle
+      if (role == 'etudiant') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardEtudiant()),
+        );
+      } else if (role == 'enseignant') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardEnseignant()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Rôle non reconnu.")),
+        );
+      }
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message ?? "Erreur inconnue")),
@@ -29,12 +86,16 @@ class _ConnexionPageState extends State<ConnexionPage> {
     }
   }
 
+  // ---------------------------------------------------------
+  // 🔹 3️⃣ Interface utilisateur
+  // ---------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF6DD5C9),
       body: Column(
         children: [
+          // 🔹 Haut de page : icône et titre
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(color: Color(0xFF6DD5C9)),
@@ -59,6 +120,8 @@ class _ConnexionPageState extends State<ConnexionPage> {
               ),
             ),
           ),
+
+          // 🔹 Corps : formulaire de connexion
           Expanded(
             child: Container(
               width: double.infinity,
@@ -85,14 +148,16 @@ class _ConnexionPageState extends State<ConnexionPage> {
                         ),
                       ),
                       const SizedBox(height: 25),
+
+                      // 🔹 Champ email
                       TextField(
                         controller: emailController,
                         style: GoogleFonts.fredoka(),
                         decoration: InputDecoration(
                           hintText: "Email",
                           hintStyle: GoogleFonts.fredoka(color: Colors.black54),
-                          prefixIcon:
-                          const Icon(Icons.email_outlined, color: Colors.black54),
+                          prefixIcon: const Icon(Icons.email_outlined,
+                              color: Colors.black54),
                           filled: true,
                           fillColor: const Color(0xFFF5F5F5),
                           border: OutlineInputBorder(
@@ -104,6 +169,8 @@ class _ConnexionPageState extends State<ConnexionPage> {
                         ),
                       ),
                       const SizedBox(height: 18),
+
+                      // 🔹 Champ mot de passe
                       TextField(
                         controller: passwordController,
                         obscureText: true,
@@ -111,8 +178,8 @@ class _ConnexionPageState extends State<ConnexionPage> {
                         decoration: InputDecoration(
                           hintText: "Mot de passe",
                           hintStyle: GoogleFonts.fredoka(color: Colors.black54),
-                          prefixIcon:
-                          const Icon(Icons.lock_outline, color: Colors.black54),
+                          prefixIcon: const Icon(Icons.lock_outline,
+                              color: Colors.black54),
                           filled: true,
                           fillColor: const Color(0xFFF5F5F5),
                           border: OutlineInputBorder(
@@ -124,6 +191,8 @@ class _ConnexionPageState extends State<ConnexionPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
+
+                      // 🔹 Mot de passe oublié
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
@@ -137,6 +206,8 @@ class _ConnexionPageState extends State<ConnexionPage> {
                           ),
                         ),
                       ),
+
+                      // 🔹 Bouton connexion
                       Container(
                         width: double.infinity,
                         height: 50,
@@ -175,7 +246,10 @@ class _ConnexionPageState extends State<ConnexionPage> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 35),
+
+                      // 🔹 Lien vers création de compte
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
