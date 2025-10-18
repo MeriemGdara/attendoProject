@@ -1,7 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'welcomepage.dart';
+import 'connexion_page.dart';
+import 'creer_un_compte_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'dashboard_etudiant.dart';
+import 'dashboard_enseignant.dart';
 
-void main() {
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const AttendoApp());
 }
 
@@ -10,10 +22,18 @@ class AttendoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Attendo',
-      home: IntroPage(),
+      initialRoute: '/', // Page de démarrage
+      routes: {
+        '/': (context) => const IntroPage(),
+        '/welcome': (context) => const WelcomePage(),
+        '/connexion': (context) => const ConnexionPage(),
+        '/creer_compte': (context) => const CreerComptePage(),
+        '/dashboard_etudiant': (context) => const DashboardEtudiant(),
+        '/dashboard_enseignant': (context) => const DashboardEnseignant(),
+      },
     );
   }
 }
@@ -34,8 +54,13 @@ class _IntroPageState extends State<IntroPage> {
     _controller = VideoPlayerController.asset('assets/videos/intro.mp4')
       ..initialize().then((_) {
         _controller.play();
-        _controller.setLooping(true);
+        _controller.setLooping(false);
         setState(() {});
+
+        // Après 6 secondes, aller à la page suivante
+        Future.delayed(const Duration(seconds: 6), () {
+          Navigator.pushReplacementNamed(context, '/welcome');
+        });
       });
   }
 
@@ -49,19 +74,41 @@ class _IntroPageState extends State<IntroPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Center(
-        child: _controller.value.isInitialized
-            ? SizedBox.expand(
-          child: FittedBox(
-            fit: BoxFit.cover,
-            child: SizedBox(
-              width: _controller.value.size.width,
-              height: _controller.value.size.height,
-              child: VideoPlayer(_controller),
+      body: Stack(
+        children: [
+          Center(
+            child: _controller.value.isInitialized
+                ? SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _controller.value.size.width,
+                  height: _controller.value.size.height,
+                  child: VideoPlayer(_controller),
+                ),
+              ),
+            )
+                : const CircularProgressIndicator(color: Colors.white),
+          ),
+          // Bouton "Passer"
+          Positioned(
+            bottom: 30,
+            right: 20,
+            child: TextButton(
+              onPressed: () {
+                Navigator.pushReplacementNamed(context, '/welcome');
+              },
+              child: const Text(
+                "Passer",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
-        )
-            : const CircularProgressIndicator(color: Colors.white),
+        ],
       ),
     );
   }
