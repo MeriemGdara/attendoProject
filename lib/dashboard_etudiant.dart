@@ -27,7 +27,7 @@ class DashboardEtudiant extends StatelessWidget {
             ),
           ),
 
-          // Conteneur turquoise avec coins arrondis en haut
+          // Conteneur turquoise avec coins arrondis
           Expanded(
             child: Container(
               width: double.infinity,
@@ -40,35 +40,32 @@ class DashboardEtudiant extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  const SizedBox(height: 1),
+                  const SizedBox(height: 10),
 
                   // Titre Dashboard Étudiant
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10, bottom: 0),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Text(
-                          'Dashboard Étudiant',
-                          style: GoogleFonts.fredoka(
-                            fontSize: 25,
-                            fontWeight: FontWeight.bold,
-                            foreground: Paint()
-                              ..style = PaintingStyle.stroke
-                              ..strokeWidth = 2
-                              ..color = const Color(0xFF1A2B4A),
-                          ),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Text(
+                        'Dashboard Étudiant',
+                        style: GoogleFonts.fredoka(
+                          fontSize: 25,
+                          fontWeight: FontWeight.bold,
+                          foreground: Paint()
+                            ..style = PaintingStyle.stroke
+                            ..strokeWidth = 2
+                            ..color = const Color(0xFF1A2B4A),
                         ),
-                        Text(
-                          'Dashboard Étudiant',
-                          style: GoogleFonts.fredoka(
-                            fontSize: 25,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                      ),
+                      Text(
+                        'Dashboard Étudiant',
+                        style: GoogleFonts.fredoka(
+                          fontSize: 25,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 20),
@@ -84,8 +81,8 @@ class DashboardEtudiant extends StatelessWidget {
                         childAspectRatio: 1.0, // carré
                         children: [
                           DashboardCard(
-                            icon: Icons.person,
-                            label: 'profil',
+                            imagePath: 'assets/images/student.jpg',
+                            label: 'Profil',
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -93,14 +90,36 @@ class DashboardEtudiant extends StatelessWidget {
                               );
                             },
                           ),
-                          DashboardCard(icon: Icons.menu_book, label: 'cours', onTap: () {}),
-                          DashboardCard(icon: Icons.notifications, label: 'notification', onTap: () {}),
-                          DashboardCard(icon: Icons.history, label: 'historique', onTap: () {}),
-                          DashboardCard(icon: Icons.logout, label: 'Se déconnecter', onTap: () {Navigator.pushReplacement( // remplace l'écran actuel par WelcomePage
-                            context,
-                            MaterialPageRoute(builder: (context) => const WelcomePage()),
-                          );}),
-                          DashboardCard(icon: Icons.grade, label: 'notes', onTap: () {}),
+                          DashboardCard(
+                            imagePath: 'assets/images/courEtudiant.jpg',
+                            label: 'Cours',
+                            onTap: () {},
+                          ),
+                          DashboardCard(
+                            imagePath: 'assets/images/notification.jpg',
+                            label: 'Notifications',
+                            onTap: () {},
+                          ),
+                          DashboardCard(
+                            imagePath: 'assets/images/historique.jpg',
+                            label: 'Historique',
+                            onTap: () {},
+                          ),
+                          DashboardCard(
+                            imagePath: 'assets/images/logout.png',
+                            label: 'Se déconnecter',
+                            onTap: () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => const WelcomePage()),
+                              );
+                            },
+                          ),
+                          DashboardCard(
+                            imagePath: 'assets/images/gestion_etudiant.jpg',
+                            label: 'Notes',
+                            onTap: () {},
+                          ),
                         ],
                       ),
                     ),
@@ -115,15 +134,15 @@ class DashboardEtudiant extends StatelessWidget {
   }
 }
 
-// Carte Dashboard avec animation au clic
+// Carte Dashboard avec animation et image
 class DashboardCard extends StatefulWidget {
-  final IconData icon;
+  final String imagePath;
   final String label;
   final VoidCallback onTap;
 
   const DashboardCard({
     super.key,
-    required this.icon,
+    required this.imagePath,
     required this.label,
     required this.onTap,
   });
@@ -136,11 +155,11 @@ class _DashboardCardState extends State<DashboardCard> {
   double _scale = 1.0;
 
   void _onTapDown(TapDownDetails details) {
-    setState(() => _scale = 0.95); // réduit la carte
+    setState(() => _scale = 0.95);
   }
 
   void _onTapUp(TapUpDetails details) {
-    setState(() => _scale = 1.0); // revient à normal
+    setState(() => _scale = 1.0);
     widget.onTap();
   }
 
@@ -173,15 +192,21 @@ class _DashboardCardState extends State<DashboardCard> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(widget.icon, size: 50, color: const Color(0xFF1A2B4A)),
-              const SizedBox(height: 10),
+              Image.asset(
+                widget.imagePath,
+                width: 100,
+                height: 100,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 6), // espace réduit entre image et label
               Text(
                 widget.label,
                 style: GoogleFonts.fredoka(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF1A2B4A),
                 ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
