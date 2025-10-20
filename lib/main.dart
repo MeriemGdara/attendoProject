@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'dashboard_etudiant.dart';
 import 'dashboard_enseignant.dart';
+import 'gestionetudiants.dart';
 
 
 void main() async {
@@ -33,6 +34,7 @@ class AttendoApp extends StatelessWidget {
         '/creer_compte': (context) => const CreerComptePage(),
         '/dashboard_etudiant': (context) => const DashboardEtudiant(),
         '/dashboard_enseignant': (context) => const DashboardEnseignant(),
+        '/gestion_etudiants': (context) => const GestionEtudiants(),
       },
     );
   }

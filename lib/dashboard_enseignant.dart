@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'ModifierProfileEnseignant.dart';
 import 'WelcomePage.dart';
+import 'gestionetudiants.dart';
+
 
 class DashboardEnseignant extends StatelessWidget {
   const DashboardEnseignant({super.key});
@@ -99,9 +101,14 @@ class DashboardEnseignant extends StatelessWidget {
                             onTap: () {},
                           ),
                           DashboardCard(
-                            imagePath: 'assets/images/gestion_etudiant.jpg',
-                            label: 'Gérer étudiants',
-                            onTap: () {},
+                            imagePath: 'assets/images/gestion_etudiants.png',
+                            label: 'Gestion étudiants',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const GestionEtudiants()),
+                              );
+                            },
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/classe.jpg',
