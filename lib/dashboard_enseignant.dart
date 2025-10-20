@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'profil_page.dart';
+import 'ModifierProfileEnseignant.dart';
 import 'WelcomePage.dart';
 import 'gestionetudiants.dart';
 
@@ -91,7 +91,7 @@ class DashboardEnseignant extends StatelessWidget {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const ProfilPage()),
+                                MaterialPageRoute(builder: (context) => const ModifierProfileEnseignant()),
                               );
                             },
                           ),
