@@ -35,6 +35,7 @@ class AttendoApp extends StatelessWidget {
         '/dashboard_etudiant': (context) => const DashboardEtudiant(),
         '/dashboard_enseignant': (context) => const DashboardEnseignant(),
         '/gestion_etudiants': (context) => const GestionEtudiants(),
+
       },
     );
   }
