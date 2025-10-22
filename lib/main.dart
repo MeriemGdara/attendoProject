@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'ModifierProfileEnseignant.dart';
+import 'ModifierProfileEtudiant.dart';
 import 'firebase_options.dart';
 import 'introPage.dart';
 import 'welcomepage.dart';
@@ -35,6 +37,8 @@ class AttendoApp extends StatelessWidget {
         '/dashboard_etudiant': (context) => const DashboardEtudiant(),
         '/dashboard_enseignant': (context) => const DashboardEnseignant(),
         '/gestion_etudiants': (context) => const GestionEtudiants(),
+        '/ModifierProfileEtudiant' : (context) => const ModifierProfileEtudiant(),
+        '/ModifierProfileEnseignant' : (context) => const ModifierProfileEnseignant(),
       },
     );
   }
