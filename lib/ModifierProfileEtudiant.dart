@@ -4,74 +4,59 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dashboard_etudiant.dart';
 
-class ModifierProfilePage extends StatefulWidget {
-  const ModifierProfilePage({super.key});
+class ModifierProfileEtudiant extends StatefulWidget {
+  const ModifierProfileEtudiant({super.key});
 
   @override
-  State<ModifierProfilePage> createState() => _ModifierProfilePageState();
+  State<ModifierProfileEtudiant> createState() => _ModifierProfilePageState();
 }
 
-class _ModifierProfilePageState extends State<ModifierProfilePage> {
+class _ModifierProfilePageState extends State<ModifierProfileEtudiant> {
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
 
+  // Contrôleurs pour récupérer le texte saisi dans les TextFields
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController oldPasswordController = TextEditingController();
 
-  String? classeSelectionnee;
-  String? groupeSelectionne;
-  Map<String, List<String>> classesEtGroupes = {};
 
+
+  // Variable pour afficher un loader pendant les opérations Firebase
   bool isLoading = false;
-  bool chargement = true;
 
+  // Méthode appelée au lancement de la page
   @override
   void initState() {
     super.initState();
-    _chargerDonneesUtilisateur();
-    _chargerClasses();
+    _chargerDonneesUtilisateur(); // Charge les données de l'utilisateur depuis Firestore
   }
 
-  Future<void> _chargerClasses() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance.collection('classes').get();
-      final Map<String, List<String>> temp = {};
-      for (var doc in snapshot.docs) {
-        temp[doc.id] = List<String>.from(doc['groupes']);
-      }
-      setState(() {
-        classesEtGroupes = temp;
-        chargement = false;
-      });
-    } catch (e) {
-      print("Erreur lors du chargement des classes : $e");
-    }
-  }
-
+  // Méthode pour récupérer les informations de l'utilisateur connecté
   Future<void> _chargerDonneesUtilisateur() async {
-    final user = _auth.currentUser;
+    final user = _auth.currentUser; // Récupère l'utilisateur connecté
     if (user != null) {
-      final snapshot = await _firestore.collection('users').doc(user.uid).get();
+      final snapshot = await _firestore.collection('users').doc(user.uid).get(); // Récupère le document Firestore
       if (snapshot.exists) {
         final data = snapshot.data()!;
         setState(() {
+          // Remplit les champs avec les informations existantes
           nameController.text = data['name'] ?? '';
           emailController.text = user.email ?? '';
           phoneController.text = data['phone'] ?? '';
-          classeSelectionnee = data['classe'];
-          groupeSelectionne = data['groupe'];
         });
       }
     }
   }
 
+  // Méthode pour modifier le profil utilisateur
   Future<void> _modifierProfile() async {
-    final user = _auth.currentUser;
+    final user = _auth.currentUser; // Vérifie si un utilisateur est connecté
     if (user == null) return;
 
+    // Vérification que tous les champs obligatoires sont remplis
     if (nameController.text.isEmpty ||
         emailController.text.isEmpty ||
         phoneController.text.isEmpty) {
@@ -81,86 +66,80 @@ class _ModifierProfilePageState extends State<ModifierProfilePage> {
       return;
     }
 
-    if (classeSelectionnee == null || groupeSelectionne == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Veuillez choisir une classe et un groupe")),
-      );
-      return;
-    }
-
+    // Vérification que le mot de passe actuel est renseigné
     if (oldPasswordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Veuillez entrer votre mot de passe actuel')),
+        const SnackBar(content: Text('Veuillez entrer votre mot de passe actuel')),
       );
       return;
     }
 
-    setState(() => isLoading = true);
+    setState(() => isLoading = true); // Active le spinner pendant la mise à jour
 
     try {
-      // Ré-authentification
+      // 🔒 Ré-authentification avec l'ancien mot de passe
       final credential = EmailAuthProvider.credential(
         email: user.email!,
         password: oldPasswordController.text.trim(),
       );
       await user.reauthenticateWithCredential(credential);
 
-      // Mise à jour de l'email si changé
+      // Mise à jour de l'email si l'utilisateur a changé son email
       if (emailController.text.trim() != user.email) {
         await user.verifyBeforeUpdateEmail(emailController.text.trim());
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'Un email de vérification a été envoyé à la nouvelle adresse.')),
+          const SnackBar(content: Text('email modifié avec succée.')),
         );
       }
 
-      // Mise à jour du mot de passe si renseigné
+      // Mise à jour du mot de passe si un nouveau mot de passe a été renseigné
       if (passwordController.text.isNotEmpty) {
         await user.updatePassword(passwordController.text.trim());
       }
 
-      // Mise à jour Firestore
+      // Mise à jour des données utilisateur dans Firestore
       await _firestore.collection('users').doc(user.uid).update({
         'name': nameController.text.trim(),
         'phone': phoneController.text.trim(),
-        'classe': classeSelectionnee,
-        'groupe': groupeSelectionne,
       });
 
+      // Message de succès
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profil mis à jour avec succès')),
       );
 
-      // ✅ Redirection vers le dashboard étudiant
+      // Redirection vers le dashboard étudiant
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const DashboardEtudiant()),
       );
     } on FirebaseAuthException catch (e) {
+      // Gestion des erreurs Firebase Auth
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erreur : ${e.message}')),
       );
     } catch (e) {
+      // Gestion des erreurs inattendues
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erreur inattendue : $e')),
       );
     } finally {
-      setState(() => isLoading = false);
+      setState(() => isLoading = false); // Désactive le spinner
     }
   }
 
+  // Méthode build : construit l'interface utilisateur
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF6DD5C9),
+      backgroundColor: const Color(0xFF6DD5C9), // Couleur de fond de la page
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator()) // Affiche un loader si isLoading = true
           : Column(
         children: [
+          // Partie supérieure avec icône et titre
           Container(
-            width: double.infinity,
+            width: double.infinity, // Le container prend toute la largeur de l'écran
             decoration: const BoxDecoration(color: Color(0xFF6DD5C9)),
             child: SafeArea(
               bottom: false,
@@ -168,8 +147,7 @@ class _ModifierProfilePageState extends State<ModifierProfilePage> {
                 padding: const EdgeInsets.only(top: 40, bottom: 20),
                 child: Column(
                   children: [
-                    const Icon(Icons.person,
-                        size: 80, color: Colors.white),
+                    const Icon(Icons.person, size: 80, color: Colors.white), // Icône utilisateur
                     const SizedBox(height: 5),
                     Text(
                       'Modifier votre profil',
@@ -184,6 +162,7 @@ class _ModifierProfilePageState extends State<ModifierProfilePage> {
               ),
             ),
           ),
+          // Partie formulaire
           Expanded(
             child: Container(
               width: double.infinity,
@@ -196,10 +175,10 @@ class _ModifierProfilePageState extends State<ModifierProfilePage> {
               ),
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 30, vertical: 35),
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
                   child: Column(
                     children: [
+                      // Champ Nom complet
                       TextField(
                         controller: nameController,
                         decoration: InputDecoration(
@@ -214,6 +193,7 @@ class _ModifierProfilePageState extends State<ModifierProfilePage> {
                         ),
                       ),
                       const SizedBox(height: 18),
+                      // Champ Email
                       TextField(
                         controller: emailController,
                         decoration: InputDecoration(
@@ -228,6 +208,7 @@ class _ModifierProfilePageState extends State<ModifierProfilePage> {
                         ),
                       ),
                       const SizedBox(height: 18),
+                      // Champ Téléphone
                       TextField(
                         controller: phoneController,
                         keyboardType: TextInputType.number,
@@ -243,64 +224,7 @@ class _ModifierProfilePageState extends State<ModifierProfilePage> {
                         ),
                       ),
                       const SizedBox(height: 18),
-
-                      // ✅ Classe
-                      if (!chargement)
-                        DropdownButtonFormField<String>(
-                          value: classeSelectionnee,
-                          items: classesEtGroupes.keys
-                              .map((classe) => DropdownMenuItem(
-                            value: classe,
-                            child: Text(classe),
-                          ))
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              classeSelectionnee = value;
-                              groupeSelectionne = null;
-                            });
-                          },
-                          decoration: InputDecoration(
-                            hintText: "Choisir la classe",
-                            prefixIcon: const Icon(Icons.class_),
-                            filled: true,
-                            fillColor: const Color(0xFFF5F5F5),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 18),
-
-                      // ✅ Groupe
-                      if (classeSelectionnee != null)
-                        DropdownButtonFormField<String>(
-                          value: groupeSelectionne,
-                          items: classesEtGroupes[classeSelectionnee]!
-                              .map((groupe) => DropdownMenuItem(
-                            value: groupe,
-                            child: Text(groupe),
-                          ))
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              groupeSelectionne = value;
-                            });
-                          },
-                          decoration: InputDecoration(
-                            hintText: "Choisir le groupe",
-                            prefixIcon: const Icon(Icons.group),
-                            filled: true,
-                            fillColor: const Color(0xFFF5F5F5),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-
-                      const SizedBox(height: 18),
+                      // Champ Mot de passe actuel
                       TextField(
                         controller: oldPasswordController,
                         obscureText: true,
@@ -316,6 +240,7 @@ class _ModifierProfilePageState extends State<ModifierProfilePage> {
                         ),
                       ),
                       const SizedBox(height: 18),
+                      // Champ Nouveau mot de passe (optionnel)
                       TextField(
                         controller: passwordController,
                         obscureText: true,
@@ -330,20 +255,16 @@ class _ModifierProfilePageState extends State<ModifierProfilePage> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 25),
-
+                      // Bouton Enregistrer les modifications
                       Padding(
-                        padding:
-                        const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: OutlinedButton(
-                          onPressed: _modifierProfile,
+                          onPressed: _modifierProfile, // Appelle la méthode pour modifier le profil
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(
-                                color: Color(0xFF6DD5C9), width: 4),
+                            side: const BorderSide(color: Color(0xFF6DD5C9), width: 4),
                             backgroundColor: Colors.white,
-                            padding:
-                            const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(25),
                             ),
