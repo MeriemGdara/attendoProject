@@ -45,10 +45,12 @@ class _ConnexionPageState extends State<ConnexionPage> {
 
     try {
       // 🔹 Authentification Firebase
+      //vérifie dans Firebase Authentication si l’email + mot de passe existent.
       UserCredential userCredential = await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email, password: password);
 
       // 🔹 Récupération du rôle depuis Firestore
+      // récupère dans Cloud Firestore les informations associées à cet utilisateur
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
@@ -258,6 +260,8 @@ class _ConnexionPageState extends State<ConnexionPage> {
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: GestureDetector(
                               onTap: () {
+
+                                //Ouvre une nouvelle page
                                 Navigator.pushNamed(context, '/creer_compte');
                               },
                               child: Text(

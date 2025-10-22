@@ -120,7 +120,9 @@ class _CreerComptePageState extends State<CreerComptePage> {
 
     try {
       // 🔹 Création du compte Firebase Auth
+      // FirebaseAuth.instance = accès au module Firebase Authentication
       UserCredential userCredential =
+      //createUserWithEmailAndPassword() = crée un nouvel utilisateur dans Firebase Auth
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -142,6 +144,8 @@ class _CreerComptePageState extends State<CreerComptePage> {
       });
 
       // 🔹 Redirection vers la page de connexion
+      //Remplace la page actuelle par la nouvelle page.
+      // L’utilisateur ne peut plus revenir à la page précédente.
       Navigator.pushReplacementNamed(context, '/connexion');
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -453,6 +457,7 @@ class _CreerComptePageState extends State<CreerComptePage> {
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: GestureDetector(
                               onTap: () {
+                                //pop : Fermer la page actuelle et revenir à la page précédente
                                 Navigator.pop(context);
                               },
                               child: Text(
