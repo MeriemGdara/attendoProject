@@ -32,12 +32,13 @@ dependencies:
     sdk: flutter
   video_player: ^2.9.1
   google_fonts: ^6.1.0
-  firebase_core: ^4.2.0
   firebase_auth: ^6.1.1
-  cloud_firestore: ^6.0.3 # optionnel si tu veux stocker des infos supplémentaires
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  cloud_firestore: ^6.0.3
   cupertino_icons: ^1.0.8
+  image_picker: ^1.0.4
+  firebase_core: ^4.2.0
+  firebase_storage: ^13.0.3
+
 
 dev_dependencies:
   flutter_test:
