@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'ModifierProfileEnseignant.dart';
-import 'WelcomePage.dart';
+import 'connexion_page.dart';
 import 'gestionetudiants.dart';
 
 
@@ -126,7 +126,7 @@ class DashboardEnseignant extends StatelessWidget {
                             onTap: () {
                               Navigator.pushReplacement(
                                 context,
-                                MaterialPageRoute(builder: (context) => const WelcomePage()),
+                                MaterialPageRoute(builder: (context) => const ConnexionPage()),
                               );
                             },
                           ),
