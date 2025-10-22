@@ -106,6 +106,12 @@ class DashboardEtudiant extends StatelessWidget {
                             label: 'Historique',
                             onTap: () {},
                           ),
+
+                          DashboardCard(
+                            imagePath: 'assets/images/gestion_etudiant.jpg',
+                            label: 'Notes',
+                            onTap: () {},
+                          ),
                           DashboardCard(
                             imagePath: 'assets/images/logout.png',
                             label: 'Se déconnecter',
@@ -115,11 +121,6 @@ class DashboardEtudiant extends StatelessWidget {
                                 MaterialPageRoute(builder: (context) => const ConnexionPage()),
                               );
                             },
-                          ),
-                          DashboardCard(
-                            imagePath: 'assets/images/gestion_etudiant.jpg',
-                            label: 'Notes',
-                            onTap: () {},
                           ),
                         ],
                       ),
