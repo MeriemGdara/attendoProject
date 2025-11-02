@@ -10,7 +10,6 @@ class ClassesGroupesPage extends StatefulWidget {
 }
 
 class _ClassesGroupesPageState extends State<ClassesGroupesPage> {
-  // Pour suivre quel groupe est ouvert pour chaque classe
   Map<String, String?> groupeOuvert = {};
 
   @override
@@ -20,163 +19,139 @@ class _ClassesGroupesPageState extends State<ClassesGroupesPage> {
         title: Text(
           "Classes et Groupes",
           style: GoogleFonts.fredoka(
-            fontSize: 22,       // taille de la police
-            fontWeight: FontWeight.bold, // gras
-            color: const Color(0xFF1c2942), // couleur du texte
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1c2942),
           ),
         ),
         backgroundColor: const Color(0xFF5fc2ba),
-        centerTitle: true, // centrer le titre si tu veux
+        centerTitle: true,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('classes').snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
 
-          final classes = snapshot.data!.docs;
-          if (classes.isEmpty) {
-            return const Center(child: Text("Aucune classe trouvée"));
-          }
+      // 🌄 Image de fond claire sans couche
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              "assets/images/fond.png",
+              fit: BoxFit.cover,
+            ),
+          ),
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: classes.length,
-            itemBuilder: (context, index) {
-              final classe = classes[index];
-              final groupes = List<String>.from(classe['groupes']);
+          // 🌟 Contenu principal par-dessus
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('classes').snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-              // Groupe sélectionné pour cette classe
-              final groupeSelectionne = groupeOuvert[classe.id];
+              final classes = snapshot.data!.docs;
+              if (classes.isEmpty) {
+                return const Center(child: Text("Aucune classe trouvée"));
+              }
 
-              return Card(
-                elevation: 4,
-                margin: const EdgeInsets.only(bottom: 20),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Nom de la classe
-                      Text(
-                        classe.id,
-                        style: GoogleFonts.fredoka(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1c2942)
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Boutons des groupes
-                      Wrap(
-                        spacing: 10,
+              return ListView.builder(
+                padding: const EdgeInsets.all(20),
+                itemCount: classes.length,
+                itemBuilder: (context, index) {
+                  final classe = classes[index];
+                  final groupes = List<String>.from(classe['groupes']);
+                  final groupeSelectionne = groupeOuvert[classe.id];
+
+                  return Card(
+                    elevation: 3,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    color: Colors.white.withOpacity(0.9), // 🔹 Légèrement transparent
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFd3edea),
-                              foregroundColor: Colors.black,
+                          Text(
+                            classe.id,
+                            style: GoogleFonts.fredoka(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1c2942),
                             ),
-                            onPressed: () {
-                              setState(() {
-                                // Toggle : si le même groupe est cliqué, on ferme
-                                if (groupeOuvert[classe.id] == groupes[0]) {
-                                  groupeOuvert[classe.id] = null;
-                                } else {
-                                  groupeOuvert[classe.id] = groupes[0];
-                                }
-                              });
-                            },
-                            child: Text(groupes[0]),
                           ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFd3edea),
-                              foregroundColor: Colors.black,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                if (groupeOuvert[classe.id] == groupes[1]) {
-                                  groupeOuvert[classe.id] = null;
-                                } else {
-                                  groupeOuvert[classe.id] = groupes[1];
-                                }
-                              });
-                            },
-                            child: Text(groupes[1]),
+                          const SizedBox(height: 12),
+
+                          Wrap(
+                            spacing: 10,
+                            children: [
+                              for (var g in [...groupes, "Tous"])
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFd3edea),
+                                    foregroundColor: Colors.black,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      groupeOuvert[classe.id] =
+                                      (groupeOuvert[classe.id] == g) ? null : g;
+                                    });
+                                  },
+                                  child: Text(g),
+                                ),
+                            ],
                           ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFd3edea),
-                              foregroundColor: Colors.black,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                if (groupeOuvert[classe.id] == "Tous") {
-                                  groupeOuvert[classe.id] = null;
-                                } else {
-                                  groupeOuvert[classe.id] = "Tous";
+                          const SizedBox(height: 12),
+
+                          if (groupeSelectionne != null)
+                            StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('users')
+                                  .where('role', isEqualTo: 'etudiant')
+                                  .where('classe', isEqualTo: classe.id)
+                                  .snapshots(),
+                               builder: (context, etuSnapshot) {
+                                if (!etuSnapshot.hasData) {
+                                  return const Center(
+                                      child: CircularProgressIndicator());
                                 }
-                              });
-                            },
-                            child: const Text("Tous"),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      // Liste des étudiants si un groupe est ouvert
-                      if (groupeSelectionne != null)
-                        StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('users')
-                              .where('role', isEqualTo: 'etudiant')
-                              .where('classe', isEqualTo: classe.id)
-                              .snapshots(),
-                          builder: (context, etuSnapshot) {
-                            if (!etuSnapshot.hasData) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
 
-                            // Filtrer selon le groupe sélectionné
-                            final etudiants = etuSnapshot.data!.docs.where((e) {
-                              if (groupeSelectionne == "Tous") return true;
-                              return e['groupe'] == groupeSelectionne;
-                            }).toList();
+                                final etudiants = etuSnapshot.data!.docs.where((e) {
+                                  if (groupeSelectionne == "Tous") return true;
+                                  return e['groupe'] == groupeSelectionne;
+                                }).toList();
 
-                            if (etudiants.isEmpty) {
-                              return const Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Text("Aucun étudiant"),
-                              );
-                            }
+                                if (etudiants.isEmpty) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text("Aucun étudiant"),
+                                  );
+                                }
 
-                            return ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: etudiants.length,
-                              itemBuilder: (_, i) {
-                                final e = etudiants[i];
-                                return ListTile(
-                                  leading: const Icon(Icons.person),
-                                  title: Text(e['name'] ?? 'Nom inconnu'),
-                                  subtitle: Text(
-                                      "Groupe: ${e['groupe']} | Classe: ${e['classe']}"),
+                                return ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: etudiants.length,
+                                  itemBuilder: (_, i) {
+                                    final e = etudiants[i];
+                                    return ListTile(
+                                      leading: const Icon(Icons.person),
+                                      title: Text(e['name'] ?? 'Nom inconnu'),
+                                      subtitle: Text(
+                                          "Groupe: ${e['groupe']} | Classe: ${e['classe']}"),
+                                    );
+                                  },
                                 );
                               },
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
+          ),
+        ],
       ),
     );
   }

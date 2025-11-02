@@ -28,12 +28,10 @@ class _ReaffecterEtudiantsPageState extends State<ReaffecterEtudiantsPage> {
   }
 
   Future<void> chargerDonnees() async {
-    setState(() {
-      chargement = true;
-    });
+    setState(() => chargement = true);
 
     try {
-      // 🔹 Étudiants
+      // 🔹 Charger les étudiants
       final etudiantsSnap = await FirebaseFirestore.instance
           .collection('users')
           .where('role', isEqualTo: 'etudiant')
@@ -41,54 +39,48 @@ class _ReaffecterEtudiantsPageState extends State<ReaffecterEtudiantsPage> {
 
       etudiants = etudiantsSnap.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        if (data.containsKey('name') && data.containsKey('classe') && data.containsKey('groupe')) {
-          return {
-            'id': doc.id,
-            'name': data['name'],
-            'classe': data['classe'],
-            'groupe': data['groupe'],
-          };
-        } else {
-          print("⚠ Document ${doc.id} ignoré : champ manquant");
-          return null;
-        }
-      }).where((e) => e != null).toList().cast<Map<String, dynamic>>();
+        return {
+          'id': doc.id,
+          'name': data['name'] ?? '',
+          'classe': data['classe'] ?? '',
+          'groupe': data['groupe'] ?? '',
+        };
+      }).toList();
 
-      // 🔹 Classes
+      // 🔹 Charger les classes
       final classesSnap = await FirebaseFirestore.instance.collection('classes').get();
-      classes = classesSnap.docs.map((doc) => doc['name'] as String).toList();
+      classes = classesSnap.docs.map((doc) {
+        final data = doc.data();
+        return data.containsKey('name') ? data['name'] as String : doc.id;
+      }).toList();
 
-      // 🔹 Groupes
+      // 🔹 Charger les groupes
       final groupesSnap = await FirebaseFirestore.instance.collection('groupes').get();
-      groupes = groupesSnap.docs.map((doc) => doc['name'] as String).toList();
+      groupes = groupesSnap.docs.map((doc) {
+        final data = doc.data();
+        return data.containsKey('name') ? data['name'] as String : doc.id;
+      }).toList();
 
-      setState(() {
-        chargement = false;
-      });
+      setState(() => chargement = false);
     } catch (e) {
       print("❌ Erreur Firestore : $e");
-      setState(() {
-        chargement = false;
-      });
+      setState(() => chargement = false);
     }
   }
 
-  // 🔹 Lorsqu’un étudiant est sélectionné
+  // 🔹 Sélection d’un étudiant
   void etudiantSelectionne(String? id) {
+    if (id == null) return;
+
+    final etudiant = etudiants.firstWhere((e) => e['id'] == id);
     setState(() {
       selectedEtudiantId = id;
-      if (id != null) {
-        final etudiant = etudiants.firstWhere((e) => e['id'] == id);
-        selectedClasse = etudiant['classe'];
-        selectedGroupe = etudiant['groupe'];
-      } else {
-        selectedClasse = null;
-        selectedGroupe = null;
-      }
+      selectedClasse = etudiant['classe'];
+      selectedGroupe = etudiant['groupe'];
     });
   }
 
-  // 🔹 Réaffecter l’étudiant
+  // 🔹 Réaffecter
   Future<void> reaffecterEtudiant() async {
     if (selectedEtudiantId == null || selectedClasse == null || selectedGroupe == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,16 +99,8 @@ class _ReaffecterEtudiantsPageState extends State<ReaffecterEtudiantsPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Étudiant réaffecté avec succès !")),
+        const SnackBar(content: Text("✅ Étudiant réaffecté avec succès !")),
       );
-
-      // Réinitialiser les selections
-      setState(() {
-        selectedEtudiantId = null;
-        selectedClasse = null;
-        selectedGroupe = null;
-        searchQuery = "";
-      });
     } catch (e) {
       print("❌ Erreur lors de la réaffectation : $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -127,10 +111,6 @@ class _ReaffecterEtudiantsPageState extends State<ReaffecterEtudiantsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final etudiantsFiltres = etudiants
-        .where((e) => e['name'].toLowerCase().contains(searchQuery.toLowerCase()))
-        .toList();
-
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -139,109 +119,130 @@ class _ReaffecterEtudiantsPageState extends State<ReaffecterEtudiantsPage> {
         ),
         backgroundColor: const Color(0xFF5fc2ba),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: chargement
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF5fc2ba)))
-            : Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 🔹 Barre de recherche
-            TextField(
-              decoration: InputDecoration(
-                labelText: "Rechercher un étudiant",
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // 🔹 Dropdown des étudiants
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Nom de l’étudiant',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              value: selectedEtudiantId,
-              items: etudiantsFiltres.map((e) => DropdownMenuItem(
-                value: e['id'] as String,
-                child: Text(e['name'] as String),
-              )).toList(),
-              onChanged: etudiantSelectionne,
-            ),
-
-            const SizedBox(height: 16),
-
-            // 🔹 Classe actuelle
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Classe actuelle',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              value: selectedClasse,
-              items: [
-                if (selectedClasse != null && !classes.contains(selectedClasse!))
-                  DropdownMenuItem(value: selectedClasse!, child: Text(selectedClasse!)),
-                ...classes.map((c) => DropdownMenuItem(value: c, child: Text(c))),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  selectedClasse = value;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // 🔹 Groupe actuel
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Groupe actuel',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              value: selectedGroupe,
-              items: [
-                if (selectedGroupe != null && !groupes.contains(selectedGroupe!))
-                  DropdownMenuItem(value: selectedGroupe!, child: Text(selectedGroupe!)),
-                ...groupes.map((g) => DropdownMenuItem(value: g, child: Text(g))),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  selectedGroupe = value;
-                });
-              },
-            ),
-
-            const SizedBox(height: 30),
-
-            // 🔹 Bouton Réaffecter
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5fc2ba),
-                  shape: RoundedRectangleBorder(
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/fond.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: chargement
+              ? const Center(
+            child: CircularProgressIndicator(color: Color(0xFF5fc2ba)),
+          )
+              : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 🔹 Recherche
+              TextField(
+                decoration: InputDecoration(
+                  labelText: "Rechercher un étudiant",
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: reaffecterEtudiant,
-                child: Text(
-                  "Réaffecter l'étudiant",
-                  style: GoogleFonts.fredoka(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                onChanged: (value) {
+                  setState(() {
+                    searchQuery = value;
+                    selectedEtudiantId = null; // 🔹 Réinitialiser la sélection
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // 🔹 Liste déroulante des résultats filtrés
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Nom de l’étudiant',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                value: selectedEtudiantId,
+                items: etudiants
+                    .where((e) {
+                  final nom = (e['name'] ?? '').toLowerCase();
+                  return nom.contains(searchQuery.toLowerCase());
+                })
+                    .map((e) {
+                  return DropdownMenuItem<String>(
+                    value: e['id'],
+                    child: Text(e['name'] ?? ''),
+                  );
+                })
+                    .toList(),
+                onChanged: etudiantSelectionne,
+              ),
+
+              const SizedBox(height: 16),
+
+              // 🔹 Classe actuelle
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Classe',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                value: selectedClasse,
+                items: classes.map((c) {
+                  return DropdownMenuItem<String>(
+                    value: c,
+                    child: Text(c),
+                  );
+                }).toList(),
+                onChanged: (value) => setState(() => selectedClasse = value),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 🔹 Groupe actuel
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Groupe',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                value: selectedGroupe,
+                items: groupes.map((g) {
+                  return DropdownMenuItem<String>(
+                    value: g,
+                    child: Text(g),
+                  );
+                }).toList(),
+                onChanged: (value) => setState(() => selectedGroupe = value),
+              ),
+
+              const SizedBox(height: 30),
+
+              // 🔹 Bouton Réaffecter
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5fc2ba),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: reaffecterEtudiant,
+                  child: Text(
+                    "Réaffecter l'étudiant",
+                    style: GoogleFonts.fredoka(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
