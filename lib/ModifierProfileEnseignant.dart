@@ -111,7 +111,11 @@ class _ModifierProfileEnseignantState extends State<ModifierProfileEnseignant> {
       // ✅ Redirection vers le tableau de bord enseignant après mise à jour
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const DashboardEnseignant()),
+        MaterialPageRoute(
+          builder: (context) => DashboardEnseignant(
+            enseignantId: FirebaseAuth.instance.currentUser?.uid ?? '',
+          ),
+        ),
       );
     } on FirebaseAuthException catch (e) {
       // Gestion des erreurs liées à FirebaseAuth
