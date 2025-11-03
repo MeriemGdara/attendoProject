@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'ClassesGroupesPage.dart';
+import 'rechercher_filtrer_page.dart';
+import 'reaffecter_etudiants_page.dart';
 
 class GestionEtudiants extends StatefulWidget {
   const GestionEtudiants({super.key});
@@ -135,12 +137,20 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                 const SizedBox(height: 16),
                 _MenuItem(
                   title: 'Rechercher et filtrer',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const RechercherFiltrerPage()),
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 _MenuItem(
                   title: 'Réaffecter étudiants',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => const ReaffecterEtudiantsPage()));
+                  },
                 ),
                 const SizedBox(height: 16),
                 _MenuItem(

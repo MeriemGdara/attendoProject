@@ -1,13 +1,17 @@
 import 'package:attendo/StatistiquesPage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'AjoutCours.dart';
 import 'ModifierProfileEnseignant.dart';
 import 'connexion_page.dart';
 import 'gestionetudiants.dart';
+import 'CreerSeancePage.dart';
 
 
 class DashboardEnseignant extends StatelessWidget {
-  const DashboardEnseignant({super.key});
+  final String enseignantId;
+  const DashboardEnseignant({super.key, required this.enseignantId});
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +103,13 @@ class DashboardEnseignant extends StatelessWidget {
                           DashboardCard(
                             imagePath: 'assets/images/cour.jpg',
                             label: 'Gestion cours',
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => AjoutCours()),
+                              );
+
+                            },
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/gestion_etudiants.png',
@@ -123,8 +133,15 @@ class DashboardEnseignant extends StatelessWidget {
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/online_L1.jpg',
-                            label: 'Lancer cours',
-                            onTap: () {},
+                            label: 'Ajouter séance',
+                            onTap: () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => CreerSeancePage(
+                                  enseignantId: FirebaseAuth.instance.currentUser!.uid, // ID de l'enseignant connecté
+                                ),),
+                              );
+                            },
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/logout.png',

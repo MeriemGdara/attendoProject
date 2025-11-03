@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'ModifierProfileEtudiant.dart';
 import 'connexion_page.dart';
+import 'notes_page.dart';
 
 class DashboardEtudiant extends StatelessWidget {
   const DashboardEtudiant({super.key});
@@ -109,7 +110,12 @@ class DashboardEtudiant extends StatelessWidget {
                           DashboardCard(
                             imagePath: 'assets/images/gestion_etudiant.jpg',
                             label: 'Notes',
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const NotesPage()),
+                              );
+                            },
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/logout.png',
@@ -199,7 +205,7 @@ class _DashboardCardState extends State<DashboardCard> {
                 height: 100,
                 fit: BoxFit.contain,
               ),
-              const SizedBox(height: 6), // espace réduit entre image et label
+              const SizedBox(height: 6),
               Text(
                 widget.label,
                 style: GoogleFonts.fredoka(
