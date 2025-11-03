@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'ModifierProfileEnseignant.dart';
@@ -35,7 +36,9 @@ class AttendoApp extends StatelessWidget {
         '/connexion': (context) => const ConnexionPage(),
         '/creer_compte': (context) => const CreerComptePage(),
         '/dashboard_etudiant': (context) => const DashboardEtudiant(),
-        '/dashboard_enseignant': (context) => const DashboardEnseignant(),
+        '/dashboard_enseignant': (context) => DashboardEnseignant(
+          enseignantId: FirebaseAuth.instance.currentUser?.uid ?? '',
+        ),
         '/gestion_etudiants': (context) => const GestionEtudiants(),
         '/ModifierProfileEtudiant' : (context) => const ModifierProfileEtudiant(),
         '/ModifierProfileEnseignant' : (context) => const ModifierProfileEnseignant(),
