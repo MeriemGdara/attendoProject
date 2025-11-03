@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'ModifierProfileEtudiant.dart';
-import 'WelcomePage.dart';
 import 'connexion_page.dart';
 import 'notes_page.dart';
 

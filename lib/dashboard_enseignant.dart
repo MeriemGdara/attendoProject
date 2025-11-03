@@ -1,9 +1,10 @@
+import 'package:attendo/StatistiquesPage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'AjoutCours.dart';
 import 'ModifierProfileEnseignant.dart';
-import 'WelcomePage.dart';
+import 'connexion_page.dart';
 import 'gestionetudiants.dart';
 import 'CreerSeancePage.dart';
 
@@ -101,7 +102,7 @@ class DashboardEnseignant extends StatelessWidget {
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/cour.jpg',
-                            label: 'Ajouter cours',
+                            label: 'Gestion cours',
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -122,8 +123,13 @@ class DashboardEnseignant extends StatelessWidget {
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/classe.jpg',
-                            label: 'Gérer classes',
-                            onTap: () {},
+                            label: 'Statistiques',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const StatistiquesPage()),
+                              );
+                            },
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/online_L1.jpg',
@@ -143,7 +149,7 @@ class DashboardEnseignant extends StatelessWidget {
                             onTap: () {
                               Navigator.pushReplacement(
                                 context,
-                                MaterialPageRoute(builder: (context) => const WelcomePage()),
+                                MaterialPageRoute(builder: (context) => const ConnexionPage()),
                               );
                             },
                           ),
