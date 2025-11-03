@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:multi_select_flutter/multi_select_flutter.dart';
 
 import 'dashboard_enseignant.dart';
 
@@ -69,9 +70,6 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
         mesClasses = classesAvecGroupes;
         _isLoading = false;
       });
-
-      // Debug
-      print("Cours récupérés: $mesCours");
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -272,41 +270,68 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                       ),
                       const SizedBox(height: 15),
 
-                      // Sélection multiple classes
-                      const Text(
+                      // Sélection multiple classes (menu déroulant)
+                      Text(
                         "Sélectionner les classes",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                       ),
-                      ...mesClasses.map((c) => CheckboxListTile(
-                        title: Text(c['nom']),
-                        value: classesSelectionnees.contains(c['id']),
-                        onChanged: (selected) {
+
+                      MultiSelectDialogField(
+                        items: mesClasses
+                            .map((c) => MultiSelectItem<String>(c['id'], c['nom']))
+                            .toList(),
+                        title: const Text("Classes"),
+                        selectedColor: const Color(0xFF58B6B3),
+                        buttonIcon: const Icon(Icons.class_),
+                        buttonText: const Text(
+                          "Choisir les classes",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(color: const Color(0xFF58B6B3), width: 1.5),
+                        ),
+                        initialValue: classesSelectionnees,
+                        onConfirm: (values) {
                           setState(() {
-                            if (selected == true) {
-                              classesSelectionnees.add(c['id']);
-                            } else {
-                              classesSelectionnees.remove(c['id']);
-                            }
+                            classesSelectionnees = List<String>.from(values);
                           });
                         },
-                      )),
+                        validator: (values) {
+                          if (values == null || values.isEmpty) {
+                            return "Veuillez sélectionner au moins une classe";
+                          }
+                          return null;
+                        },
+                      ),
+
 
                       const SizedBox(height: 20),
                       Center(
                         child: ElevatedButton.icon(
-                          icon: const Icon(Icons.add),
-                          label: const Text("Créer séance"),
+                          icon: const Icon(Icons.add, color: Colors.white), // <-- icône blanche
+                          label: const Text(
+                            "Créer séance",
+                            style: TextStyle(
+                              color: Colors.white, // <-- texte blanc
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           onPressed: _sauvegarderSeance,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF58B6B3),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 40, vertical: 14),
+                            backgroundColor: const Color(0xFF58B6B3), // couleur du fond
+                            foregroundColor: Colors.white, // <-- couleur du texte/icône par défaut
+                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(25),
                             ),
+                            elevation: 4,
                           ),
                         ),
                       ),
+
                     ],
                   ),
                 ),
