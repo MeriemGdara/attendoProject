@@ -74,7 +74,11 @@ class _ConnexionPageState extends State<ConnexionPage> {
       } else if (role == 'enseignant') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const DashboardEnseignant()),
+          MaterialPageRoute(
+            builder: (context) => DashboardEnseignant(
+              enseignantId: FirebaseAuth.instance.currentUser?.uid ?? '',
+            ),
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
