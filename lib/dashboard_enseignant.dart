@@ -1,3 +1,4 @@
+import 'package:attendo/StatistiquesPage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'ModifierProfileEnseignant.dart';
@@ -97,7 +98,7 @@ class DashboardEnseignant extends StatelessWidget {
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/cour.jpg',
-                            label: 'Ajouter cours',
+                            label: 'Gestion cours',
                             onTap: () {},
                           ),
                           DashboardCard(
@@ -112,8 +113,13 @@ class DashboardEnseignant extends StatelessWidget {
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/classe.jpg',
-                            label: 'Gérer classes',
-                            onTap: () {},
+                            label: 'Statistiques',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const StatistiquesPage()),
+                              );
+                            },
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/online_L1.jpg',
