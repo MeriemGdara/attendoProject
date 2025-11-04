@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart'; // <-- Import Google Fonts
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'dashboard_enseignant.dart';
 
 class AjoutCours extends StatefulWidget {
@@ -64,7 +63,6 @@ class _AjoutCoursState extends State<AjoutCours> {
       _formKey.currentState!.save();
 
       try {
-        // 🔹 Ajout du cours dans Firestore
         await FirebaseFirestore.instance.collection('cours').add({
           'nomCours': nomCours,
           'description': description,
@@ -77,7 +75,6 @@ class _AjoutCoursState extends State<AjoutCours> {
           const SnackBar(content: Text('✅ Cours ajouté avec succès !')),
         );
 
-        // 🔹 Redirection vers le dashboard enseignant
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -86,7 +83,6 @@ class _AjoutCoursState extends State<AjoutCours> {
             ),
           ),
         );
-
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('❌ Erreur lors de l\'ajout : $e')),
@@ -107,7 +103,7 @@ class _AjoutCoursState extends State<AjoutCours> {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // --- Image d'arrière-plan ---
+          // --- Image d’arrière-plan ---
           Positioned.fill(
             child: Image.asset(
               'assets/images/background.png',
@@ -128,6 +124,26 @@ class _AjoutCoursState extends State<AjoutCours> {
                     const Color(0xFF58B6B3).withOpacity(0.2),
                   ],
                 ),
+              ),
+            ),
+          ),
+
+          // --- Flèche retour positionnée au-dessus de l’image ---
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 10, top: 10),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DashboardEnseignant(
+                        enseignantId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -158,7 +174,6 @@ class _AjoutCoursState extends State<AjoutCours> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Titre section avec GoogleFonts
                       Text(
                         "Créer un nouveau cours",
                         style: GoogleFonts.fredoka(
@@ -169,7 +184,6 @@ class _AjoutCoursState extends State<AjoutCours> {
                       ),
                       const SizedBox(height: 25),
 
-                      // Champ : Nom du cours
                       TextFormField(
                         decoration: _inputDecoration("Nom du cours", Icons.book),
                         validator: (value) =>
@@ -178,7 +192,6 @@ class _AjoutCoursState extends State<AjoutCours> {
                       ),
                       const SizedBox(height: 15),
 
-                      // Champ : Description
                       TextFormField(
                         decoration:
                         _inputDecoration("Description", Icons.description),
@@ -189,53 +202,46 @@ class _AjoutCoursState extends State<AjoutCours> {
                       ),
                       const SizedBox(height: 15),
 
-                      // Sous-titre : Enseignant amélioré avec icône
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Enseignant",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(15),
-                              border: Border.all(color: const Color(0xFF58B6B3), width: 1),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.person,
-                                  color: Color(0xFF58B6B3),
-                                  size: 25,
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  nomEnseignant,
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF626571),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      const Text(
+                        "Enseignant",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-
-
+                      const SizedBox(height: 5),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(
+                              color: const Color(0xFF58B6B3), width: 1),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.person,
+                              color: Color(0xFF58B6B3),
+                              size: 25,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              nomEnseignant,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF626571),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 30),
 
-                      // Bouton
                       Center(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
@@ -270,7 +276,6 @@ class _AjoutCoursState extends State<AjoutCours> {
     );
   }
 
-  // --- Style pour les champs de texte ---
   InputDecoration _inputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
@@ -284,7 +289,8 @@ class _AjoutCoursState extends State<AjoutCours> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: Color(0xFF58B6B3), width: 2),
+        borderSide:
+        const BorderSide(color: Color(0xFF58B6B3), width: 2),
       ),
     );
   }

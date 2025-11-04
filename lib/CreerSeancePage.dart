@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
-
 import 'dashboard_enseignant.dart';
 
 class CreerSeancePage extends StatefulWidget {
@@ -34,17 +33,11 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
 
   Future<void> _chargerCoursEtClasses() async {
     try {
-      print(">>> ID enseignant connecté : ${widget.enseignantId}");
-      // Récupérer les cours de l'enseignant
       final queryCours = await FirebaseFirestore.instance
           .collection('cours')
           .where('enseignantId', isEqualTo: widget.enseignantId)
           .get();
-      print("Cours trouvés : ${queryCours.docs.length}");
-      for (var doc in queryCours.docs) {
-        print("Cours: ${doc.data()}");
-      }
-      // Récupérer les classes avec leurs groupes
+
       final queryClasses = await FirebaseFirestore.instance.collection('classes').get();
 
       List<Map<String, dynamic>> classesAvecGroupes = [];
@@ -63,10 +56,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
         mesCours = queryCours.docs
             .map((doc) => {'id': doc.id, 'nom': doc['nomCours']})
             .toList();
-
-        // Initialiser courID avec le premier cours si la liste n'est pas vide
         courID = mesCours.isNotEmpty ? mesCours[0]['id'] : null;
-
         mesClasses = classesAvecGroupes;
         _isLoading = false;
       });
@@ -84,7 +74,6 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
         courID != null &&
         classesSelectionnees.isNotEmpty) {
       try {
-        // 🔹 Ajout dans Firestore
         await FirebaseFirestore.instance.collection('séances').add({
           'nom': nom,
           'description': description,
@@ -95,12 +84,10 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
           'classes': classesSelectionnees,
         });
 
-        // 🔹 Message de succès
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Séance créée avec succès')),
         );
 
-        // 🔹 Redirection vers le Dashboard Enseignant
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -121,7 +108,6 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -134,7 +120,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // Fond moderne
+          // 🔹 Fond moderne
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -147,7 +133,31 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
             ),
           ),
 
-          // Contenu principal
+          // 🔹 Flèche de retour (au-dessus du fond)
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 26),
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DashboardEnseignant(
+                          enseignantId: widget.enseignantId,
+                        ),
+                      ),
+                    );
+                  },
+
+                ),
+              ),
+            ),
+          ),
+
+          // 🔹 Contenu principal
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -184,17 +194,14 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Nom séance
                       _buildTextField("Nom de la séance", Icons.book, (v) => nom = v, true),
                       const SizedBox(height: 15),
 
-                      // Description
                       _buildTextField("Description", Icons.description,
                               (v) => description = v, false,
                           maxLines: 3),
                       const SizedBox(height: 15),
 
-                      // Horaire
                       Text(
                         "Horaire",
                         style: TextStyle(
@@ -244,7 +251,6 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                       ),
                       const SizedBox(height: 15),
 
-                      // Durée
                       DropdownButtonFormField<int>(
                         decoration: _inputDecoration("Durée (minutes)", Icons.timer),
                         value: duree,
@@ -256,9 +262,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                       ),
                       const SizedBox(height: 15),
 
-                      // Sélection cours
                       DropdownButtonFormField<String>(
-                        isExpanded: true, // <- IMPORTANT
+                        isExpanded: true,
                         decoration: _inputDecoration("Sélectionner le cours", Icons.book),
                         value: courID,
                         items: mesCours.map((c) => DropdownMenuItem<String>(
@@ -270,12 +275,10 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                       ),
                       const SizedBox(height: 15),
 
-                      // Sélection multiple classes (menu déroulant)
                       Text(
                         "Sélectionner les classes",
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                       ),
-
                       MultiSelectDialogField(
                         items: mesClasses
                             .map((c) => MultiSelectItem<String>(c['id'], c['nom']))
@@ -305,24 +308,21 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                           return null;
                         },
                       ),
-
-
                       const SizedBox(height: 20),
                       Center(
                         child: ElevatedButton.icon(
-                          icon: const Icon(Icons.add, color: Colors.white), // <-- icône blanche
+                          icon: const Icon(Icons.add, color: Colors.white),
                           label: const Text(
                             "Créer séance",
                             style: TextStyle(
-                              color: Colors.white, // <-- texte blanc
+                              color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           onPressed: _sauvegarderSeance,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF58B6B3), // couleur du fond
-                            foregroundColor: Colors.white, // <-- couleur du texte/icône par défaut
+                            backgroundColor: const Color(0xFF58B6B3),
                             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(25),
@@ -331,13 +331,12 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                           ),
                         ),
                       ),
-
                     ],
                   ),
                 ),
               ),
             ),
-          )
+          ),
         ],
       ),
     );

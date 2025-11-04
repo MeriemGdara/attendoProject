@@ -139,15 +139,24 @@ class _ModifierProfilePageState extends State<ModifierProfileEtudiant> {
         children: [
           // Partie supérieure avec icône et titre
           Container(
-            width: double.infinity, // Le container prend toute la largeur de l'écran
+            width: double.infinity,
             decoration: const BoxDecoration(color: Color(0xFF6DD5C9)),
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.only(top: 40, bottom: 20),
+                padding: const EdgeInsets.only(top: 30, bottom: 20, left: 10, right: 10),
                 child: Column(
                   children: [
-                    const Icon(Icons.person, size: 80, color: Colors.white), // Icône utilisateur
+                    // 🔙 Flèche de retour
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Icon(Icons.person, size: 80, color: Colors.white),
                     const SizedBox(height: 5),
                     Text(
                       'Modifier votre profil',
@@ -162,6 +171,7 @@ class _ModifierProfilePageState extends State<ModifierProfileEtudiant> {
               ),
             ),
           ),
+
           // Partie formulaire
           Expanded(
             child: Container(

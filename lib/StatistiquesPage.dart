@@ -179,16 +179,25 @@ class _StatistiquesPageState extends State<StatistiquesPage> {
           Container(
             width: double.infinity,
             color: Colors.white,
-            padding: const EdgeInsets.only(top: 30, bottom: 1),
-            child: Center(
-              child: Image.asset(
-                'assets/images/ATTEND.png',
-                width: 250,
-                height: 100,
-                fit: BoxFit.contain,
-              ),
+            padding: const EdgeInsets.only(top: 40, bottom: 10, left: 10, right: 10),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF1c2942), size: 28),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const Spacer(),
+                Image.asset(
+                  'assets/images/ATTEND.png',
+                  width: 200,
+                  height: 90,
+                  fit: BoxFit.contain,
+                ),
+                const Spacer(),
+              ],
             ),
           ),
+
           Expanded(
             child: Container(
               width: double.infinity,
