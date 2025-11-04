@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'ModifierProfileEtudiant.dart';
 import 'connexion_page.dart';
 import 'notes_page.dart';
+import 'SeancesEtudiantPage.dart';
 
 class DashboardEtudiant extends StatelessWidget {
   const DashboardEtudiant({super.key});
@@ -94,7 +95,12 @@ class DashboardEtudiant extends StatelessWidget {
                           DashboardCard(
                             imagePath: 'assets/images/courEtudiant.jpg',
                             label: 'Cours',
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const SeancesEtudiantPage()),
+                              );
+                            },
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/notification.jpg',
