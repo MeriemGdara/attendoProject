@@ -5,6 +5,8 @@ import 'ClassesGroupesPage.dart';
 import 'rechercher_filtrer_page.dart';
 import 'reaffecter_etudiants_page.dart';
 import 'Statistiques des étudiants.dart';
+import 'dashboard_enseignant.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class GestionEtudiants extends StatefulWidget {
   const GestionEtudiants({super.key});
@@ -66,18 +68,39 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
             child: CircularProgressIndicator(color: Color(0xFF5fc2ba)))
             : SingleChildScrollView(
           child: Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 24, vertical: 40),
             child: Column(
               children: [
-                Text(
-                  'Gestion étudiants',
-                  style: GoogleFonts.fredoka(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1c2942),
-                  ),
+                // ✅ En-tête avec flèche retour + texte
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back,
+                          color: Color(0xFF1c2942), size: 28),
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DashboardEnseignant(
+                              enseignantId: FirebaseAuth.instance.currentUser!.uid, // ✅ passe l’ID de l’enseignant connecté
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Gestion étudiants',
+                      style: GoogleFonts.fredoka(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1c2942),
+                      ),
+                    ),
+                  ],
                 ),
+
                 const SizedBox(height: 50),
 
                 // ✅ Logo rond
@@ -94,7 +117,6 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                   child: ClipOval(
                     child: Image.asset(
                       'assets/images/gestion_etudiants.png',
-
                     ),
                   ),
                 ),
@@ -122,6 +144,7 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 50),
 
                 // ✅ Menus
@@ -130,7 +153,9 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const ClassesGroupesPage()),
+                      MaterialPageRoute(
+                          builder: (context) =>
+                          const ClassesGroupesPage()),
                     );
                   },
                 ),
@@ -141,7 +166,9 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const RechercherFiltrerPage()),
+                      MaterialPageRoute(
+                          builder: (context) =>
+                          const RechercherFiltrerPage()),
                     );
                   },
                 ),
@@ -149,8 +176,11 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                 _MenuItem(
                   title: 'Réaffecter étudiants',
                   onTap: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => const ReaffecterEtudiantsPage()));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                            const ReaffecterEtudiantsPage()));
                   },
                 ),
                 const SizedBox(height: 16),
@@ -159,11 +189,12 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const SuivreStatistiquesPage()),
+                      MaterialPageRoute(
+                          builder: (context) =>
+                          const SuivreStatistiquesPage()),
                     );
                   },
                 ),
-
               ],
             ),
           ),
@@ -172,7 +203,6 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
     );
   }
 }
-
 // ------------------------------------------------------
 // 🔹 Widget StatCard (même style, taille identique)
 // ------------------------------------------------------

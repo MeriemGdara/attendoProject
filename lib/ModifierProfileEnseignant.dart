@@ -16,7 +16,8 @@ class ModifierProfileEnseignant extends StatefulWidget { //statefulwidget : indi
 class _ModifierProfileEnseignantState extends State<ModifierProfileEnseignant> {
   // Instances de Firebase
   final _auth = FirebaseAuth.instance; // Gère l’utilisateur connecté
-  final _firestore = FirebaseFirestore.instance; // Accès à la base de données Firestore
+  final _firestore = FirebaseFirestore
+      .instance; // Accès à la base de données Firestore
 
   // Contrôleurs pour les champs de texte
   final TextEditingController nameController = TextEditingController();
@@ -69,7 +70,8 @@ class _ModifierProfileEnseignantState extends State<ModifierProfileEnseignant> {
     // Vérifie que l’ancien mot de passe est saisi pour réauthentifier l’utilisateur
     if (oldPasswordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez entrer votre mot de passe actuel')),
+        const SnackBar(
+            content: Text('Veuillez entrer votre mot de passe actuel')),
       );
       return;
     }
@@ -112,9 +114,10 @@ class _ModifierProfileEnseignantState extends State<ModifierProfileEnseignant> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => DashboardEnseignant(
-            enseignantId: FirebaseAuth.instance.currentUser?.uid ?? '',
-          ),
+          builder: (context) =>
+              DashboardEnseignant(
+                enseignantId: FirebaseAuth.instance.currentUser?.uid ?? '',
+              ),
         ),
       );
     } on FirebaseAuthException catch (e) {
@@ -135,38 +138,50 @@ class _ModifierProfileEnseignantState extends State<ModifierProfileEnseignant> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF6DD5C9), // Couleur de fond principale
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator()) // Loader si opération en cours
-          : Column(
-        children: [
-          // En-tête de la page (haut)
-          Container(
-            width: double.infinity,
-            decoration: const BoxDecoration(color: Color(0xFF6DD5C9)),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 40, bottom: 20),
-                child: Column(
-                  children: [
-                    const Icon(Icons.person, size: 80, color: Colors.white),
-                    const SizedBox(height: 5),
-                    Text(
-                      'Modifier votre profil',
-                      style: GoogleFonts.fredoka(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+      backgroundColor: const Color(0xFF6DD5C9),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF6DD5C9),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DashboardEnseignant(
+                  enseignantId: FirebaseAuth.instance.currentUser?.uid ?? '',
                 ),
               ),
+            );
+          },
+        ),
+      ),
+
+
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+        children: [
+          // 🧩 Titre + icône profil (on garde ton design existant)
+          Padding(
+            padding: const EdgeInsets.only(top: 20, bottom: 10),
+            child: Column(
+              children: [
+                const Icon(Icons.person, size: 80, color: Colors.white),
+                const SizedBox(height: 5),
+                Text(
+                  'Modifier votre profil',
+                  style: GoogleFonts.fredoka(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
           ),
 
-          //Contenu principal (formulaire)
+          // 🧾 Formulaire (inchangé)
           Expanded(
             child: Container(
               width: double.infinity,
@@ -179,7 +194,8 @@ class _ModifierProfileEnseignantState extends State<ModifierProfileEnseignant> {
               ),
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 30, vertical: 35),
                   child: Column(
                     children: [
                       // Champ Nom
@@ -265,15 +281,18 @@ class _ModifierProfileEnseignantState extends State<ModifierProfileEnseignant> {
                       ),
                       const SizedBox(height: 25),
 
-                      // Bouton d’enregistrement
+                      // Bouton Enregistrer
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding:
+                        const EdgeInsets.symmetric(horizontal: 20),
                         child: OutlinedButton(
-                          onPressed: _modifierProfile, // Appel de la fonction principale
+                          onPressed: _modifierProfile,
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF6DD5C9), width: 4),
+                            side: const BorderSide(
+                                color: Color(0xFF6DD5C9), width: 4),
                             backgroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 14, horizontal: 20),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(25),
                             ),
