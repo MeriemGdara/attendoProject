@@ -12,6 +12,7 @@ class SeanceDetailPage extends StatefulWidget {
   final int dureeMinutes;
   final String classe;
   final String groupe;
+  final String codeSeance; // 👈 Code simple (à ajouter dans Firestore)
 
   const SeanceDetailPage({
     super.key,
@@ -22,6 +23,7 @@ class SeanceDetailPage extends StatefulWidget {
     required this.dureeMinutes,
     required this.classe,
     required this.groupe,
+    required this.codeSeance,
   });
 
   @override
@@ -94,11 +96,11 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     if (!_canMark) return;
 
     String inputCode = codeController.text.trim();
-    if (inputCode == widget.seanceId) {
+    if (inputCode.toLowerCase() == widget.codeSeance.toLowerCase()) {
       markPresent();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Code incorrect')),
+        const SnackBar(content: Text('Code incorrect ❌')),
       );
     }
   }

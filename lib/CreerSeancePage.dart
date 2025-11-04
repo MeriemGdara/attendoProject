@@ -74,6 +74,14 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
         courID != null &&
         classesSelectionnees.isNotEmpty) {
       try {
+        // 🔹 Récupérer le nom du cours choisi
+        final coursSelectionne =
+        mesCours.firstWhere((c) => c['id'] == courID, orElse: () => {'nom': ''});
+        String nomCours = coursSelectionne['nom'] ?? '';
+
+        // 🔹 Générer le code de séance = nomCours + 123
+        String codeSeance = '${nomCours.replaceAll(' ', '')}123';
+
         await FirebaseFirestore.instance.collection('séances').add({
           'nom': nom,
           'description': description,
@@ -82,6 +90,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
           'courId': courID,
           'enseignantId': widget.enseignantId,
           'classes': classesSelectionnees,
+          'code': codeSeance, // ✅ Ajout du champ code ici
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -151,7 +160,6 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                       ),
                     );
                   },
-
                 ),
               ),
             ),
@@ -197,9 +205,13 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                       _buildTextField("Nom de la séance", Icons.book, (v) => nom = v, true),
                       const SizedBox(height: 15),
 
-                      _buildTextField("Description", Icons.description,
-                              (v) => description = v, false,
-                          maxLines: 3),
+                      _buildTextField(
+                        "Description",
+                        Icons.description,
+                            (v) => description = v,
+                        false,
+                        maxLines: 3,
+                      ),
                       const SizedBox(height: 15),
 
                       Text(
@@ -255,8 +267,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                         decoration: _inputDecoration("Durée (minutes)", Icons.timer),
                         value: duree,
                         items: [30, 60, 90, 120]
-                            .map((e) =>
-                            DropdownMenuItem(value: e, child: Text('$e minutes')))
+                            .map((e) => DropdownMenuItem(value: e, child: Text('$e minutes')))
                             .toList(),
                         onChanged: (value) => setState(() => duree = value!),
                       ),
@@ -266,10 +277,12 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                         isExpanded: true,
                         decoration: _inputDecoration("Sélectionner le cours", Icons.book),
                         value: courID,
-                        items: mesCours.map((c) => DropdownMenuItem<String>(
+                        items: mesCours
+                            .map((c) => DropdownMenuItem<String>(
                           value: c['id'].toString(),
                           child: Text(c['nom'].toString()),
-                        )).toList(),
+                        ))
+                            .toList(),
                         onChanged: (value) => setState(() => courID = value),
                         validator: (value) => value == null ? 'Requis' : null,
                       ),
