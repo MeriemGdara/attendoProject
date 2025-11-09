@@ -123,6 +123,8 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
           'userId': uid,
           'seanceId': seanceId,
           'etat': 'Absent',
+          'classe': classe,
+          'groupe': groupe,
           'date': Timestamp.now(),
         });
       }
