@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 
 class SeanceDetailPage extends StatefulWidget {
   final String seanceId;
@@ -52,11 +53,11 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       final sessionStart = widget.horaire.toDate();
       final maxDuration = sessionStart.add(const Duration(minutes: 15));
 
-      // Timer automatique pour marquer absent après 15 minutes
+      // Marquage automatique absent après 15 minutes
       if (_isSessionActive && !_isPresent && now.isAfter(maxDuration)) {
         markAbsent();
         if (mounted) {
-          Navigator.pop(context); // Redirection automatique
+          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('⏰ Temps dépassé, vous êtes marqué Absent.'),
@@ -180,6 +181,69 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     }
   }
 
+  // Vérification distance enseignant < 5 m
+  Future<void> markPresentWithDistanceCheck() async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+
+    // Récupérer position enseignant
+    final enseignantDoc = await FirebaseFirestore.instance
+        .collection('positions_enseignants')
+        .doc(widget.seanceId) // ID enseignant ou seance
+        .get();
+
+    if (!enseignantDoc.exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Position de l'enseignant non disponible."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final enseignantData = enseignantDoc.data()!;
+    final enseignantLat = enseignantData['latitude'] as double;
+    final enseignantLon = enseignantData['longitude'] as double;
+
+    // Récupérer position étudiant
+    Position etudiantPos;
+    try {
+      etudiantPos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Impossible de récupérer votre position."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    // Calcul distance
+    double distance = Geolocator.distanceBetween(
+      enseignantLat,
+      enseignantLon,
+      etudiantPos.latitude,
+      etudiantPos.longitude,
+    );
+
+    if (distance > 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              "❌ Vous êtes trop loin de l'enseignant (${distance.toStringAsFixed(2)} m)."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    // Marquer présence si < 5 m
+    await markPresent();
+  }
+
   void _checkCode() {
     if (!_isSessionActive) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -190,7 +254,7 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
 
     String inputCode = codeController.text.trim();
     if (inputCode.toLowerCase() == widget.codeSeance.toLowerCase()) {
-      markPresent();
+      markPresentWithDistanceCheck();
       codeController.clear();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

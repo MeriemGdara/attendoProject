@@ -1,18 +1,85 @@
+import 'dart:async';
 import 'package:attendo/GestionSeancesPage.dart';
 import 'package:attendo/StatistiquesPage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'GestionCoursPage.dart';
 import 'ModifierProfileEnseignant.dart';
 import 'connexion_page.dart';
 import 'gestionetudiants.dart';
-import 'GestionSeancesPage.dart';
 
-
-class DashboardEnseignant extends StatelessWidget {
+class DashboardEnseignant extends StatefulWidget {
   final String enseignantId;
   const DashboardEnseignant({super.key, required this.enseignantId});
+
+  @override
+  State<DashboardEnseignant> createState() => _DashboardEnseignantState();
+}
+
+class _DashboardEnseignantState extends State<DashboardEnseignant> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startSeanceWatcher();
+  }
+
+  // Récupération automatique de la position de l'enseignant
+  void _startSeanceWatcher() {
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      final now = DateTime.now();
+      final enseignantId = widget.enseignantId;
+
+      // Récupération des séances planifiées de cet enseignant
+      final snap = await FirebaseFirestore.instance
+          .collection('séances')
+          .where('enseignantId', isEqualTo: enseignantId)
+          .where('statut', isEqualTo: 'planifiée')
+          .get();
+
+      for (final seance in snap.docs) {
+        final horaire = (seance['horaire'] as Timestamp).toDate();
+
+        // Si la séance commence maintenant
+        if (now.isAfter(horaire) && now.isBefore(horaire.add(const Duration(minutes: 1)))) {
+          try {
+            Position position = await Geolocator.getCurrentPosition(
+                desiredAccuracy: LocationAccuracy.high);
+
+            // Enregistrement dans Firebase
+            await FirebaseFirestore.instance
+                .collection('positions_enseignants')
+                .doc(enseignantId)
+                .set({
+              'latitude': position.latitude,
+              'longitude': position.longitude,
+              'timestamp': Timestamp.now(),
+            });
+
+            // Mettre la séance en cours
+            await FirebaseFirestore.instance
+                .collection('séances')
+                .doc(seance.id)
+                .update({'statut': 'enCours'});
+
+            print("Séance ${seance.id} démarrée automatiquement !");
+          } catch (e) {
+            print("Erreur récupération position : $e");
+          }
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +176,6 @@ class DashboardEnseignant extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(builder: (context) => GestionCoursPage()),
                               );
-
                             },
                           ),
                           DashboardCard(
@@ -138,7 +204,9 @@ class DashboardEnseignant extends StatelessWidget {
                             onTap: () {
                               Navigator.pushReplacement(
                                 context,
-                                MaterialPageRoute(builder: (context) => GestionSeancesPage(enseignantId: FirebaseAuth.instance.currentUser!.uid)),
+                                MaterialPageRoute(
+                                    builder: (context) => GestionSeancesPage(
+                                        enseignantId: FirebaseAuth.instance.currentUser!.uid)),
                               );
                             },
                           ),
@@ -226,7 +294,7 @@ class _DashboardCardState extends State<DashboardCard> {
             children: [
               Image.asset(
                 widget.imagePath,
-                width: 120, // taille plus grande
+                width: 120,
                 height: 120,
                 fit: BoxFit.contain,
               ),
