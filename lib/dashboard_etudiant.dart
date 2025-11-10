@@ -1,3 +1,4 @@
+import 'package:attendo/HistoriquePage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'ModifierProfileEtudiant.dart';
@@ -110,7 +111,12 @@ class DashboardEtudiant extends StatelessWidget {
                           DashboardCard(
                             imagePath: 'assets/images/historique.jpg',
                             label: 'Historique',
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const HistoriquePage()),
+                              );
+                            },
                           ),
 
                           DashboardCard(

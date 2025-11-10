@@ -1,3 +1,4 @@
+import 'package:attendo/GestionCoursPage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -106,41 +107,26 @@ class _AjoutCoursState extends State<AjoutCours> {
           // --- Image d’arrière-plan ---
           Positioned.fill(
             child: Image.asset(
-              'assets/images/background.png',
+              'assets/images/backgroundCours1.jpg',
               fit: BoxFit.cover,
             ),
           ),
 
-          // --- Dégradé léger pour lisibilité ---
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.2),
-                    Colors.white.withOpacity(0.1),
-                    const Color(0xFF58B6B3).withOpacity(0.2),
-                  ],
-                ),
-              ),
-            ),
-          ),
+
+
 
           // --- Flèche retour positionnée au-dessus de l’image ---
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.only(left: 10, top: 10),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
+                icon: const Icon(Icons.arrow_back, color: Colors.black, size: 30),
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => DashboardEnseignant(
-                        enseignantId: FirebaseAuth.instance.currentUser?.uid ?? '',
-                      ),
+                      builder: (context) => GestionCoursPage(),
+
                     ),
                   );
                 },
