@@ -1,7 +1,9 @@
+import 'package:attendo/GestionSeancesPage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 import 'dashboard_enseignant.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CreerSeancePage extends StatefulWidget {
   final String enseignantId; // ID de l'enseignant connecté
@@ -74,12 +76,10 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
         courID != null &&
         classesSelectionnees.isNotEmpty) {
       try {
-        // 🔹 Récupérer le nom du cours choisi
         final coursSelectionne =
         mesCours.firstWhere((c) => c['id'] == courID, orElse: () => {'nom': ''});
         String nomCours = coursSelectionne['nom'] ?? '';
 
-        // 🔹 Générer le code de séance = nomCours + 123
         String codeSeance = '${nomCours.replaceAll(' ', '')}123';
 
         await FirebaseFirestore.instance.collection('séances').add({
@@ -90,7 +90,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
           'courId': courID,
           'enseignantId': widget.enseignantId,
           'classes': classesSelectionnees,
-          'code': codeSeance, // ✅ Ajout du champ code ici
+          'code': codeSeance,
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -129,20 +129,15 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // 🔹 Fond moderne
+          // 🔹 Image de fond
           Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade100, Colors.white],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
+            child: Image.asset(
+              'assets/images/backgroundSeance2.jpg',
+              fit: BoxFit.cover,
             ),
           ),
 
-          // 🔹 Flèche de retour (au-dessus du fond)
+          // 🔹 Flèche de retour
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(10.0),
@@ -154,7 +149,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => DashboardEnseignant(
+                        builder: (context) => GestionSeancesPage(
                           enseignantId: widget.enseignantId,
                         ),
                       ),
@@ -165,40 +160,38 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
             ),
           ),
 
-          // 🔹 Contenu principal
+          // 🔹 Conteneur blanc scrollable (forme arrondie en bas seulement)
           Align(
             alignment: Alignment.bottomCenter,
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height * 0.85,
-              ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(35),
-                  topRight: Radius.circular(35),
+            child: SingleChildScrollView(
+              child: Container(
+                margin: EdgeInsets.only(top: 150), // espace pour voir le design en haut
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(35),
+                    topRight: Radius.circular(35),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, -3),
+                    )
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 10,
-                    offset: Offset(0, -3),
-                  )
-                ],
-              ),
-              child: SingleChildScrollView(
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         "Créer une séance",
-                        style: TextStyle(
+                        style: GoogleFonts.fredoka(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2C3E50)),
+                            color: const Color(0xFF2C3E50)),
                       ),
                       const SizedBox(height: 20),
 
@@ -216,7 +209,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
 
                       Text(
                         "Horaire",
-                        style: TextStyle(
+                        style: GoogleFonts.fredoka(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                             color: Colors.grey[700]),
@@ -290,7 +283,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
 
                       Text(
                         "Sélectionner les classes",
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        style: GoogleFonts.fredoka(
+                            fontSize: 16, fontWeight: FontWeight.w500),
                       ),
                       MultiSelectDialogField(
                         items: mesClasses
@@ -322,6 +316,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                         },
                       ),
                       const SizedBox(height: 20),
+
                       Center(
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.add, color: Colors.white),

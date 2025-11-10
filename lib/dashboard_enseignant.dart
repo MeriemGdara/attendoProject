@@ -1,12 +1,13 @@
+import 'package:attendo/GestionSeancesPage.dart';
 import 'package:attendo/StatistiquesPage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'AjoutCours.dart';
+import 'GestionCoursPage.dart';
 import 'ModifierProfileEnseignant.dart';
 import 'connexion_page.dart';
 import 'gestionetudiants.dart';
-import 'CreerSeancePage.dart';
+import 'GestionSeancesPage.dart';
 
 
 class DashboardEnseignant extends StatelessWidget {
@@ -106,7 +107,7 @@ class DashboardEnseignant extends StatelessWidget {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => AjoutCours()),
+                                MaterialPageRoute(builder: (context) => GestionCoursPage()),
                               );
 
                             },
@@ -137,9 +138,7 @@ class DashboardEnseignant extends StatelessWidget {
                             onTap: () {
                               Navigator.pushReplacement(
                                 context,
-                                MaterialPageRoute(builder: (context) => CreerSeancePage(
-                                  enseignantId: FirebaseAuth.instance.currentUser!.uid, // ID de l'enseignant connecté
-                                ),),
+                                MaterialPageRoute(builder: (context) => GestionSeancesPage(enseignantId: FirebaseAuth.instance.currentUser!.uid)),
                               );
                             },
                           ),
