@@ -181,8 +181,49 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     }
   }
 
+  /// Demande permission de localisation
+  Future<bool> _handleLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Activez le GPS pour continuer.')),
+      );
+      return false;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permission de localisation refusée.')),
+        );
+        return false;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Permission de localisation refusée définitivement. Activez-la dans les paramètres.',
+          ),
+        ),
+      );
+      return false;
+    }
+
+    return true;
+  }
+
   // Vérification distance enseignant < 5 m
   Future<void> markPresentWithDistanceCheck() async {
+    bool hasPermission = await _handleLocationPermission();
+    if (!hasPermission) return;
+
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
     // Récupérer l'enseignant qui a créé la séance
@@ -247,7 +288,7 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       etudiantPos.longitude,
     );
 
-    if (distance > 5) {
+    if (distance > 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
