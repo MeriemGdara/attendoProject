@@ -185,10 +185,28 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
   Future<void> markPresentWithDistanceCheck() async {
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
-    // Récupérer position enseignant
+    // Récupérer l'enseignant qui a créé la séance
+    final seanceDoc = await FirebaseFirestore.instance
+        .collection('séances')
+        .doc(widget.seanceId)
+        .get();
+
+    if (!seanceDoc.exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Séance introuvable."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final enseignantId = seanceDoc['enseignantId'] as String;
+
+    // Récupérer la dernière position de l'enseignant pour cette séance
     final enseignantDoc = await FirebaseFirestore.instance
         .collection('positions_enseignants')
-        .doc(widget.seanceId) // ID enseignant ou seance
+        .doc(enseignantId)
         .get();
 
     if (!enseignantDoc.exists) {
@@ -229,7 +247,7 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       etudiantPos.longitude,
     );
 
-    if (distance > 1) {
+    if (distance > 0.5) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -240,7 +258,7 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       return;
     }
 
-    // Marquer présence si < 5 m
+    // Marquer présence si distance ≤ 5 m
     await markPresent();
   }
 

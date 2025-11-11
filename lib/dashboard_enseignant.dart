@@ -28,49 +28,88 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
     _startSeanceWatcher();
   }
 
-  // Récupération automatique de la position de l'enseignant
+  /// Vérifie et demande la permission de localisation
+  Future<bool> _checkLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      print("❌ Le service de localisation n'est pas activé");
+      return false;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        print("❌ Permission de localisation refusée");
+        return false;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      print("❌ Permission de localisation refusée définitivement");
+      return false;
+    }
+
+    return true;
+  }
+
+  /// Timer qui récupère automatiquement la position si une séance approche
   void _startSeanceWatcher() {
     _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      final now = DateTime.now();
-      final enseignantId = widget.enseignantId;
+      try {
+        final now = DateTime.now();
+        final enseignantId = widget.enseignantId;
 
-      // Récupération des séances planifiées de cet enseignant
-      final snap = await FirebaseFirestore.instance
-          .collection('séances')
-          .where('enseignantId', isEqualTo: enseignantId)
-          .where('statut', isEqualTo: 'planifiée')
-          .get();
+        // Récupérer toutes les séances de cet enseignant
+        final snap = await FirebaseFirestore.instance
+            .collection('séances')
+            .where('enseignantId', isEqualTo: enseignantId)
+            .get();
 
-      for (final seance in snap.docs) {
-        final horaire = (seance['horaire'] as Timestamp).toDate();
+        for (final seance in snap.docs) {
+          final horaireData = seance['horaire'];
 
-        // Si la séance commence maintenant
-        if (now.isAfter(horaire) && now.isBefore(horaire.add(const Duration(minutes: 1)))) {
-          try {
-            Position position = await Geolocator.getCurrentPosition(
-                desiredAccuracy: LocationAccuracy.high);
+          DateTime horaire;
+          if (horaireData is Timestamp) {
+            horaire = horaireData.toDate();
+          } else if (horaireData is String) {
+            horaire = DateTime.parse(horaireData);
+          } else {
+            continue;
+          }
 
-            // Enregistrement dans Firebase
-            await FirebaseFirestore.instance
-                .collection('positions_enseignants')
-                .doc(enseignantId)
-                .set({
-              'latitude': position.latitude,
-              'longitude': position.longitude,
-              'timestamp': Timestamp.now(),
-            });
+          // Vérifie si la séance est proche (+/- 5 minutes)
+          if ((now.isAfter(horaire.subtract(const Duration(minutes: 5))) &&
+              now.isBefore(horaire.add(const Duration(minutes: 5))))) {
+            try {
+              if (await _checkLocationPermission()) {
+                Position position = await Geolocator.getCurrentPosition(
+                  desiredAccuracy: LocationAccuracy.high,
+                );
 
-            // Mettre la séance en cours
-            await FirebaseFirestore.instance
-                .collection('séances')
-                .doc(seance.id)
-                .update({'statut': 'enCours'});
+                // Enregistrement dans Firestore
+                await FirebaseFirestore.instance
+                    .collection('positions_enseignants')
+                    .doc(enseignantId)
+                    .set({
+                  'seanceId': seance.id,
+                  'latitude': position.latitude,
+                  'longitude': position.longitude,
+                  'timestamp': Timestamp.now(),
+                });
 
-            print("Séance ${seance.id} démarrée automatiquement !");
-          } catch (e) {
-            print("Erreur récupération position : $e");
+                print("✅ Position enregistrée pour la séance ${seance.id}");
+              }
+            } catch (e) {
+              print("❌ Erreur récupération position : $e");
+            }
           }
         }
+      } catch (e) {
+        print("❌ Erreur lors de la récupération des séances : $e");
       }
     });
   }
@@ -87,7 +126,6 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // Logo
           Container(
             width: double.infinity,
             color: Colors.white,
@@ -101,8 +139,6 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
               ),
             ),
           ),
-
-          // Conteneur turquoise
           Expanded(
             child: Container(
               width: double.infinity,
@@ -116,8 +152,6 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
               child: Column(
                 children: [
                   const SizedBox(height: 1),
-
-                  // Titre Dashboard
                   Padding(
                     padding: const EdgeInsets.only(top: 10, bottom: 0),
                     child: Stack(
@@ -145,10 +179,7 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Grille des cartes
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -205,8 +236,10 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => GestionSeancesPage(
-                                        enseignantId: FirebaseAuth.instance.currentUser!.uid)),
+                                  builder: (context) => GestionSeancesPage(
+                                    enseignantId: FirebaseAuth.instance.currentUser!.uid,
+                                  ),
+                                ),
                               );
                             },
                           ),
@@ -234,7 +267,7 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
   }
 }
 
-// Carte Dashboard avec animation au clic et image
+// DashboardCard reste inchangé
 class DashboardCard extends StatefulWidget {
   final String imagePath;
   final String label;
@@ -254,18 +287,13 @@ class DashboardCard extends StatefulWidget {
 class _DashboardCardState extends State<DashboardCard> {
   double _scale = 1.0;
 
-  void _onTapDown(TapDownDetails details) {
-    setState(() => _scale = 0.95);
-  }
-
+  void _onTapDown(TapDownDetails details) => setState(() => _scale = 0.95);
   void _onTapUp(TapUpDetails details) {
     setState(() => _scale = 1.0);
     widget.onTap();
   }
 
-  void _onTapCancel() {
-    setState(() => _scale = 1.0);
-  }
+  void _onTapCancel() => setState(() => _scale = 1.0);
 
   @override
   Widget build(BuildContext context) {
