@@ -20,11 +20,11 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
   DateTime? horaire;
   int duree = 60;
   String? courID;
+  String codeSeance = ''; // ✅ Code saisi par l'enseignant
   List<String> classesSelectionnees = [];
 
   List<Map<String, dynamic>> mesCours = [];
   List<Map<String, dynamic>> mesClasses = [];
-
   bool _isLoading = true;
 
   @override
@@ -40,7 +40,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
           .where('enseignantId', isEqualTo: widget.enseignantId)
           .get();
 
-      final queryClasses = await FirebaseFirestore.instance.collection('classes').get();
+      final queryClasses =
+      await FirebaseFirestore.instance.collection('classes').get();
 
       List<Map<String, dynamic>> classesAvecGroupes = [];
 
@@ -76,11 +77,25 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
         courID != null &&
         classesSelectionnees.isNotEmpty) {
       try {
-        final coursSelectionne =
-        mesCours.firstWhere((c) => c['id'] == courID, orElse: () => {'nom': ''});
+        final coursSelectionne = mesCours.firstWhere(
+              (c) => c['id'] == courID,
+          orElse: () => {'nom': ''},
+        );
         String nomCours = coursSelectionne['nom'] ?? '';
 
-        String codeSeance = '${nomCours.replaceAll(' ', '')}123';
+        // ✅ Vérification si le code existe déjà
+        final existCheck = await FirebaseFirestore.instance
+            .collection('séances')
+            .where('code', isEqualTo: codeSeance)
+            .get();
+
+        if (existCheck.docs.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Ce code de séance existe déjà, veuillez en choisir un autre.')),
+          );
+          return;
+        }
 
         await FirebaseFirestore.instance.collection('séances').add({
           'nom': nom,
@@ -90,7 +105,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
           'courId': courID,
           'enseignantId': widget.enseignantId,
           'classes': classesSelectionnees,
-          'code': codeSeance,
+          'code': codeSeance, // ✅ Code saisi par l’enseignant
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -144,7 +159,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
               child: Align(
                 alignment: Alignment.topLeft,
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 26),
+                  icon: const Icon(Icons.arrow_back_ios,
+                      color: Colors.black, size: 26),
                   onPressed: () {
                     Navigator.pushReplacement(
                       context,
@@ -160,13 +176,14 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
             ),
           ),
 
-          // 🔹 Conteneur blanc scrollable (forme arrondie en bas seulement)
+          // 🔹 Conteneur blanc scrollable
           Align(
             alignment: Alignment.bottomCenter,
             child: SingleChildScrollView(
               child: Container(
-                margin: EdgeInsets.only(top: 150), // espace pour voir le design en haut
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+                margin: const EdgeInsets.only(top: 150),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
@@ -189,22 +206,24 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                       Text(
                         "Créer une séance",
                         style: GoogleFonts.fredoka(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF2C3E50)),
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF2C3E50),
+                        ),
                       ),
                       const SizedBox(height: 20),
 
-                      _buildTextField("Nom de la séance", Icons.book, (v) => nom = v, true),
+                      _buildTextField("Nom de la séance", Icons.book,
+                              (v) => nom = v, true),
                       const SizedBox(height: 15),
 
-                      _buildTextField(
-                        "Description",
-                        Icons.description,
-                            (v) => description = v,
-                        false,
-                        maxLines: 3,
-                      ),
+                      _buildTextField("Code de la séance", Icons.qr_code,
+                              (v) => codeSeance = v, true),
+                      const SizedBox(height: 15),
+
+                      _buildTextField("Description", Icons.description,
+                              (v) => description = v, false,
+                          maxLines: 3),
                       const SizedBox(height: 15),
 
                       Text(
@@ -251,16 +270,21 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 14),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25)),
+                            borderRadius: BorderRadius.circular(25),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 15),
 
                       DropdownButtonFormField<int>(
-                        decoration: _inputDecoration("Durée (minutes)", Icons.timer),
+                        decoration:
+                        _inputDecoration("Durée (minutes)", Icons.timer),
                         value: duree,
                         items: [30, 60, 90, 120]
-                            .map((e) => DropdownMenuItem(value: e, child: Text('$e minutes')))
+                            .map((e) => DropdownMenuItem(
+                          value: e,
+                          child: Text('$e minutes'),
+                        ))
                             .toList(),
                         onChanged: (value) => setState(() => duree = value!),
                       ),
@@ -268,7 +292,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
 
                       DropdownButtonFormField<String>(
                         isExpanded: true,
-                        decoration: _inputDecoration("Sélectionner le cours", Icons.book),
+                        decoration: _inputDecoration(
+                            "Sélectionner le cours", Icons.book),
                         value: courID,
                         items: mesCours
                             .map((c) => DropdownMenuItem<String>(
@@ -277,7 +302,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                         ))
                             .toList(),
                         onChanged: (value) => setState(() => courID = value),
-                        validator: (value) => value == null ? 'Requis' : null,
+                        validator: (value) =>
+                        value == null ? 'Requis' : null,
                       ),
                       const SizedBox(height: 15),
 
@@ -288,7 +314,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                       ),
                       MultiSelectDialogField(
                         items: mesClasses
-                            .map((c) => MultiSelectItem<String>(c['id'], c['nom']))
+                            .map((c) =>
+                            MultiSelectItem<String>(c['id'], c['nom']))
                             .toList(),
                         title: const Text("Classes"),
                         selectedColor: const Color(0xFF58B6B3),
@@ -300,7 +327,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: const Color(0xFF58B6B3), width: 1.5),
+                          border: Border.all(
+                              color: const Color(0xFF58B6B3), width: 1.5),
                         ),
                         initialValue: classesSelectionnees,
                         onConfirm: (values) {
@@ -323,15 +351,15 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                           label: const Text(
                             "Créer séance",
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600),
                           ),
                           onPressed: _sauvegarderSeance,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF58B6B3),
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(25),
                             ),
@@ -367,7 +395,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
     );
   }
 
-  Widget _buildTextField(String label, IconData icon, Function(String) onChanged, bool required,
+  Widget _buildTextField(String label, IconData icon,
+      Function(String) onChanged, bool required,
       {int maxLines = 1}) {
     return TextFormField(
       decoration: _inputDecoration(label, icon),

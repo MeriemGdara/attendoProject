@@ -1,124 +1,18 @@
-import 'dart:async';
 import 'package:attendo/GestionSeancesPage.dart';
 import 'package:attendo/StatistiquesPage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'GestionCoursPage.dart';
 import 'ModifierProfileEnseignant.dart';
 import 'connexion_page.dart';
 import 'gestionetudiants.dart';
+import 'GestionSeancesPage.dart';
 
-class DashboardEnseignant extends StatefulWidget {
+
+class DashboardEnseignant extends StatelessWidget {
   final String enseignantId;
   const DashboardEnseignant({super.key, required this.enseignantId});
-
-  @override
-  State<DashboardEnseignant> createState() => _DashboardEnseignantState();
-}
-
-class _DashboardEnseignantState extends State<DashboardEnseignant> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _startSeanceWatcher();
-  }
-
-  /// Vérifie et demande la permission de localisation
-  Future<bool> _checkLocationPermission() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      print("❌ Le service de localisation n'est pas activé");
-      return false;
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        print("❌ Permission de localisation refusée");
-        return false;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      print("❌ Permission de localisation refusée définitivement");
-      return false;
-    }
-
-    return true;
-  }
-
-  /// Timer qui récupère automatiquement la position si une séance approche
-  void _startSeanceWatcher() {
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      try {
-        final now = DateTime.now();
-        final enseignantId = widget.enseignantId;
-
-        // Récupérer toutes les séances de cet enseignant
-        final snap = await FirebaseFirestore.instance
-            .collection('séances')
-            .where('enseignantId', isEqualTo: enseignantId)
-            .get();
-
-        for (final seance in snap.docs) {
-          final horaireData = seance['horaire'];
-
-          DateTime horaire;
-          if (horaireData is Timestamp) {
-            horaire = horaireData.toDate();
-          } else if (horaireData is String) {
-            horaire = DateTime.parse(horaireData);
-          } else {
-            continue;
-          }
-
-          // Vérifie si la séance est proche (+/- 5 minutes)
-          if ((now.isAfter(horaire.subtract(const Duration(minutes: 5))) &&
-              now.isBefore(horaire.add(const Duration(minutes: 5))))) {
-            try {
-              if (await _checkLocationPermission()) {
-                Position position = await Geolocator.getCurrentPosition(
-                  desiredAccuracy: LocationAccuracy.high,
-                );
-
-                // Enregistrement dans Firestore
-                await FirebaseFirestore.instance
-                    .collection('positions_enseignants')
-                    .doc(enseignantId)
-                    .set({
-                  'seanceId': seance.id,
-                  'latitude': position.latitude,
-                  'longitude': position.longitude,
-                  'timestamp': Timestamp.now(),
-                });
-
-                print("✅ Position enregistrée pour la séance ${seance.id}");
-              }
-            } catch (e) {
-              print("❌ Erreur récupération position : $e");
-            }
-          }
-        }
-      } catch (e) {
-        print("❌ Erreur lors de la récupération des séances : $e");
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,6 +20,7 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
+          // Logo
           Container(
             width: double.infinity,
             color: Colors.white,
@@ -139,6 +34,8 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
               ),
             ),
           ),
+
+          // Conteneur turquoise
           Expanded(
             child: Container(
               width: double.infinity,
@@ -152,6 +49,8 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
               child: Column(
                 children: [
                   const SizedBox(height: 1),
+
+                  // Titre Dashboard
                   Padding(
                     padding: const EdgeInsets.only(top: 10, bottom: 0),
                     child: Stack(
@@ -179,7 +78,10 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 20),
+
+                  // Grille des cartes
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -207,6 +109,7 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
                                 context,
                                 MaterialPageRoute(builder: (context) => GestionCoursPage()),
                               );
+
                             },
                           ),
                           DashboardCard(
@@ -235,11 +138,7 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
                             onTap: () {
                               Navigator.pushReplacement(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (context) => GestionSeancesPage(
-                                    enseignantId: FirebaseAuth.instance.currentUser!.uid,
-                                  ),
-                                ),
+                                MaterialPageRoute(builder: (context) => GestionSeancesPage(enseignantId: FirebaseAuth.instance.currentUser!.uid)),
                               );
                             },
                           ),
@@ -267,7 +166,7 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
   }
 }
 
-// DashboardCard reste inchangé
+// Carte Dashboard avec animation au clic et image
 class DashboardCard extends StatefulWidget {
   final String imagePath;
   final String label;
@@ -287,13 +186,18 @@ class DashboardCard extends StatefulWidget {
 class _DashboardCardState extends State<DashboardCard> {
   double _scale = 1.0;
 
-  void _onTapDown(TapDownDetails details) => setState(() => _scale = 0.95);
+  void _onTapDown(TapDownDetails details) {
+    setState(() => _scale = 0.95);
+  }
+
   void _onTapUp(TapUpDetails details) {
     setState(() => _scale = 1.0);
     widget.onTap();
   }
 
-  void _onTapCancel() => setState(() => _scale = 1.0);
+  void _onTapCancel() {
+    setState(() => _scale = 1.0);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -322,7 +226,7 @@ class _DashboardCardState extends State<DashboardCard> {
             children: [
               Image.asset(
                 widget.imagePath,
-                width: 120,
+                width: 120, // taille plus grande
                 height: 120,
                 fit: BoxFit.contain,
               ),
