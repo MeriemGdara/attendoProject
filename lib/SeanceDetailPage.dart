@@ -53,7 +53,6 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       final sessionStart = widget.horaire.toDate();
       final maxDuration = sessionStart.add(const Duration(minutes: 15));
 
-      // Marquage automatique absent après 15 minutes
       if (_isSessionActive && !_isPresent && now.isAfter(maxDuration)) {
         markAbsent();
         if (mounted) {
@@ -181,7 +180,6 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     }
   }
 
-  /// Demande permission de localisation
   Future<bool> _handleLocationPermission() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -219,14 +217,13 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     return true;
   }
 
-  // Vérification distance enseignant < 5 m
+  // ✅ Distance simplifiée (pas de formule géographique)
   Future<void> markPresentWithDistanceCheck() async {
     bool hasPermission = await _handleLocationPermission();
     if (!hasPermission) return;
 
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
-    // Récupérer l'enseignant qui a créé la séance
     final seanceDoc = await FirebaseFirestore.instance
         .collection('séances')
         .doc(widget.seanceId)
@@ -244,7 +241,6 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
 
     final enseignantId = seanceDoc['enseignantId'] as String;
 
-    // Récupérer la dernière position de l'enseignant pour cette séance
     final enseignantDoc = await FirebaseFirestore.instance
         .collection('positions_enseignants')
         .doc(enseignantId)
@@ -264,7 +260,6 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     final enseignantLat = enseignantData['latitude'] as double;
     final enseignantLon = enseignantData['longitude'] as double;
 
-    // Récupérer position étudiant
     Position etudiantPos;
     try {
       etudiantPos = await Geolocator.getCurrentPosition(
@@ -280,15 +275,12 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       return;
     }
 
-    // Calcul distance
-    double distance = Geolocator.distanceBetween(
-      enseignantLat,
-      enseignantLon,
-      etudiantPos.latitude,
-      etudiantPos.longitude,
-    );
+    // ✅ Nouvelle formule simple :
+    double distance = ((enseignantLat - etudiantPos.latitude).abs() +
+        (enseignantLon - etudiantPos.longitude).abs()) *
+        111000;
 
-    if (distance > 1) {
+    if (distance > 5) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -299,7 +291,6 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       return;
     }
 
-    // Marquer présence si distance ≤ 5 m
     await markPresent();
   }
 
@@ -329,8 +320,8 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
   @override
   Widget build(BuildContext context) {
     final horaireStr = DateFormat('HH:mm').format(widget.horaire.toDate());
-    final finStr = DateFormat('HH:mm')
-        .format(widget.horaire.toDate().add(Duration(minutes: widget.dureeMinutes)));
+    final finStr = DateFormat('HH:mm').format(
+        widget.horaire.toDate().add(Duration(minutes: widget.dureeMinutes)));
 
     return Scaffold(
       appBar: AppBar(
@@ -343,7 +334,6 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
-          textAlign: TextAlign.center,
         ),
         elevation: 4,
       ),
