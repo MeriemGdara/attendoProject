@@ -33,7 +33,8 @@ class SeanceDetailPage extends StatefulWidget {
 }
 
 class _SeanceDetailPageState extends State<SeanceDetailPage> {
-  late Timer _timer;
+  Timer? _timer;
+  StreamSubscription<Position>? _positionStream;
   bool _isSessionActive = false;
   bool _isPresent = false;
   DateTime? _attendanceTime;
@@ -44,35 +45,19 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     super.initState();
     _checkSessionStatus();
 
+    // Vérifie l'état de la séance chaque seconde
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
         _checkSessionStatus();
       });
-
-      final now = DateTime.now();
-      final sessionStart = widget.horaire.toDate();
-      final maxDuration = sessionStart.add(const Duration(minutes: 15));
-
-      // Marquage automatique absent après 15 minutes
-      if (_isSessionActive && !_isPresent && now.isAfter(maxDuration)) {
-        markAbsent();
-        if (mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('⏰ Temps dépassé, vous êtes marqué Absent.'),
-              backgroundColor: Colors.redAccent,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      }
+      _autoMarkAbsent();
     });
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
+    _positionStream?.cancel();
     codeController.dispose();
     super.dispose();
   }
@@ -81,39 +66,26 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     final now = DateTime.now();
     final sessionStart = widget.horaire.toDate();
     final sessionEnd = sessionStart.add(Duration(minutes: widget.dureeMinutes));
+    final wasActive = _isSessionActive;
     _isSessionActive = now.isAfter(sessionStart) && now.isBefore(sessionEnd);
+
+    // Si la séance vient de devenir active → démarrer le suivi GPS
+    if (_isSessionActive && !wasActive) {
+      _startPositionTracking();
+    }
+
+    // Si la séance se termine → arrêter le suivi
+    if (!_isSessionActive && wasActive) {
+      _stopPositionTracking();
+    }
   }
 
-  String getSessionTimer() {
+  void _autoMarkAbsent() {
     final now = DateTime.now();
     final sessionStart = widget.horaire.toDate();
-    final sessionEnd = sessionStart.add(Duration(minutes: widget.dureeMinutes));
-
-    if (_isPresent && _attendanceTime != null) {
-      final elapsed = now.difference(_attendanceTime!);
-      final h = elapsed.inHours.toString().padLeft(2, '0');
-      final m = (elapsed.inMinutes % 60).toString().padLeft(2, '0');
-      final s = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
-      return "$h:$m:$s";
-    } else if (_isSessionActive) {
-      final remaining = sessionEnd.difference(now);
-      final h = remaining.inHours.toString().padLeft(2, '0');
-      final m = (remaining.inMinutes % 60).toString().padLeft(2, '0');
-      final s = (remaining.inSeconds % 60).toString().padLeft(2, '0');
-      return "$h:$m:$s";
-    }
-    return "00:00:00";
-  }
-
-  String getTimerLabel() {
-    if (_isPresent) {
-      return "⏱ Temps écoulé depuis la présence";
-    } else if (_isSessionActive) {
-      return "⏳ Temps restant pour la séance";
-    } else if (DateTime.now().isBefore(widget.horaire.toDate())) {
-      return "🕒 Séance à venir";
-    } else {
-      return "✅ Séance terminée";
+    final maxDuration = sessionStart.add(const Duration(minutes: 15));
+    if (_isSessionActive && !_isPresent && now.isAfter(maxDuration)) {
+      markAbsent();
     }
   }
 
@@ -144,19 +116,12 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Présence enregistrée avec succès !'),
+            content: Text('✅ Présence enregistrée automatiquement !'),
             backgroundColor: Color(0xFF78c8c0),
             duration: Duration(seconds: 3),
           ),
         );
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vous avez déjà marqué votre présence.'),
-          backgroundColor: Color(0xFFB45309),
-        ),
-      );
     }
   }
 
@@ -181,7 +146,6 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     }
   }
 
-  /// Demande permission de localisation
   Future<bool> _handleLocationPermission() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -219,68 +183,47 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     return true;
   }
 
-  // Vérification distance enseignant < 5 m
-  Future<void> markPresentWithDistanceCheck() async {
+  /// 🔁 Suivi automatique de la position de l'étudiant
+  void _startPositionTracking() async {
     bool hasPermission = await _handleLocationPermission();
     if (!hasPermission) return;
 
-    final userId = FirebaseAuth.instance.currentUser!.uid;
+    _positionStream = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 1, // mise à jour si déplacement de 1 mètre
+      ),
+    ).listen((Position position) async {
+      if (_isPresent) return; // déjà présent → stop
+      await _checkDistanceAndMark(position);
+    });
+  }
 
-    // Récupérer l'enseignant qui a créé la séance
+  void _stopPositionTracking() {
+    _positionStream?.cancel();
+  }
+
+  /// Vérifie la distance en continu et marque la présence si proche
+  Future<void> _checkDistanceAndMark(Position etudiantPos) async {
     final seanceDoc = await FirebaseFirestore.instance
         .collection('séances')
         .doc(widget.seanceId)
         .get();
 
-    if (!seanceDoc.exists) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Séance introuvable."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
+    if (!seanceDoc.exists) return;
     final enseignantId = seanceDoc['enseignantId'] as String;
 
-    // Récupérer la dernière position de l'enseignant pour cette séance
     final enseignantDoc = await FirebaseFirestore.instance
         .collection('positions_enseignants')
         .doc(enseignantId)
         .get();
 
-    if (!enseignantDoc.exists) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Position de l'enseignant non disponible."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
+    if (!enseignantDoc.exists) return;
 
     final enseignantData = enseignantDoc.data()!;
     final enseignantLat = enseignantData['latitude'] as double;
     final enseignantLon = enseignantData['longitude'] as double;
 
-    // Récupérer position étudiant
-    Position etudiantPos;
-    try {
-      etudiantPos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Impossible de récupérer votre position."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    // Calcul distance
     double distance = Geolocator.distanceBetween(
       enseignantLat,
       enseignantLon,
@@ -288,41 +231,11 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       etudiantPos.longitude,
     );
 
-    if (distance > 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              "❌ Vous êtes trop loin de l'enseignant (${distance.toStringAsFixed(2)} m)."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
+    print("📍 Distance étu/ens : ${distance.toStringAsFixed(2)} m");
 
-    // Marquer présence si distance ≤ 5 m
-    await markPresent();
-  }
-
-  void _checkCode() {
-    if (!_isSessionActive) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La séance n\'est pas active.')),
-      );
-      return;
-    }
-
-    String inputCode = codeController.text.trim();
-    if (inputCode.toLowerCase() == widget.codeSeance.toLowerCase()) {
-      markPresentWithDistanceCheck();
-      codeController.clear();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ Code incorrect'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      codeController.clear();
+    if (distance <= 5) {
+      await markPresent();
+      _stopPositionTracking();
     }
   }
 
@@ -345,189 +258,41 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
           ),
           textAlign: TextAlign.center,
         ),
-        elevation: 4,
       ),
-      body: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.all(22),
-        child: SingleChildScrollView(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(25),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Carte du cours
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(
-                    color: Colors.teal.shade400,
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      spreadRadius: 2,
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.nomCours,
-                      style: GoogleFonts.fredoka(
-                        color: Colors.black,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Code séance : ${widget.codeSeance}",
-                      style: GoogleFonts.fredoka(
-                        color: Colors.black87,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 25),
-
-              // Description
               Text(
-                "Description",
+                widget.nomCours,
                 style: GoogleFonts.fredoka(
-                  fontSize: 20,
-                  color: const Color(0xFF333333),
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
-                widget.description.isNotEmpty
-                    ? widget.description
-                    : "Aucune description disponible.",
-                style: GoogleFonts.fredoka(fontSize: 17, color: Colors.grey[700]),
+                "Horaire : $horaireStr - $finStr",
+                style: GoogleFonts.fredoka(fontSize: 18),
               ),
-              const SizedBox(height: 20),
-
-              // Horaire
-              Row(
-                children: [
-                  const Icon(Icons.schedule, color: Color(0xFF78c8c0)),
-                  const SizedBox(width: 10),
-                  Text(
-                    "$horaireStr - $finStr (${widget.dureeMinutes} min)",
-                    style: GoogleFonts.fredoka(
-                      fontSize: 17,
-                      color: const Color(0xFF444444),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 35),
-
-              // Timer
-              Center(
-                child: Column(
-                  children: [
-                    Text(
-                      getTimerLabel(),
-                      style: GoogleFonts.fredoka(
-                        fontSize: 18,
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: _isPresent
-                            ? const Color(0xFFd1fae5)
-                            : Colors.tealAccent.shade100,
-                        border: Border.all(
-                          color: _isPresent
-                              ? Colors.teal.shade700
-                              : Colors.teal.shade400,
-                          width: 2,
-                        ),
-                      ),
-                      child: Text(
-                        getSessionTimer(),
-                        style: GoogleFonts.fredoka(
-                          fontSize: 46,
-                          fontWeight: FontWeight.bold,
-                          color: _isPresent ? Colors.black : Colors.teal.shade700,
-                        ),
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 25),
+              Text(
+                _isPresent
+                    ? "✅ Présence enregistrée !"
+                    : _isSessionActive
+                    ? "⏳ Vérification automatique en cours..."
+                    : "🕒 En attente du début de la séance...",
+                style: GoogleFonts.fredoka(
+                  fontSize: 18,
+                  color: _isPresent ? Colors.green : Colors.grey[700],
                 ),
               ),
-              const SizedBox(height: 35),
-
-              // Code + bouton
-              if (!_isPresent && _isSessionActive)
-                Column(
-                  children: [
-                    TextField(
-                      controller: codeController,
-                      decoration: InputDecoration(
-                        labelText: 'Entrez le code de la séance',
-                        labelStyle: GoogleFonts.fredoka(fontSize: 17),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        prefixIcon:
-                        const Icon(Icons.lock, color: Color(0xFF78c8c0)),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: _checkCode,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF78c8c0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 3,
-                        ),
-                        child: Text(
-                          "Marquer ma présence",
-                          style: GoogleFonts.fredoka(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-              if (!_isSessionActive && !_isPresent)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: Text(
-                      "⏰ La séance n'est pas encore active ou est déjà terminée.",
-                      style: TextStyle(
-                          color: Colors.redAccent,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+              const SizedBox(height: 30),
+              if (!_isPresent)
+                const CircularProgressIndicator(
+                  color: Color(0xFF78c8c0),
                 ),
             ],
           ),
