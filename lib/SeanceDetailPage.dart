@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:geolocator/geolocator.dart';
 
 class SeanceDetailPage extends StatefulWidget {
   final String seanceId;
@@ -53,10 +52,11 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       final sessionStart = widget.horaire.toDate();
       final maxDuration = sessionStart.add(const Duration(minutes: 15));
 
+      // Timer automatique pour marquer absent après 15 minutes
       if (_isSessionActive && !_isPresent && now.isAfter(maxDuration)) {
         markAbsent();
         if (mounted) {
-          Navigator.pop(context);
+          Navigator.pop(context); // Redirection automatique
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('⏰ Temps dépassé, vous êtes marqué Absent.'),
@@ -180,130 +180,6 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     }
   }
 
-  Future<bool> _handleLocationPermission() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Activez le GPS pour continuer.')),
-      );
-      return false;
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permission de localisation refusée.')),
-        );
-        return false;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Permission de localisation refusée définitivement. Activez-la dans les paramètres.',
-          ),
-        ),
-      );
-      return false;
-    }
-
-    return true;
-  }
-
-  // ✅ Distance simplifiée (pas de formule géographique)
-  Future<void> markPresentWithDistanceCheck() async {
-    // 1️⃣ Vérifier les permissions de localisation
-    bool hasPermission = await _handleLocationPermission();
-    if (!hasPermission) return;
-
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-
-    // 2️⃣ Récupérer la séance
-    final seanceDoc = await FirebaseFirestore.instance
-        .collection('séances')
-        .doc(widget.seanceId)
-        .get();
-
-    if (!seanceDoc.exists) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Séance introuvable."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    final enseignantId = seanceDoc['enseignantId'] as String;
-
-    // 3️⃣ Récupérer la position de l'enseignant
-    final enseignantDoc = await FirebaseFirestore.instance
-        .collection('positions_enseignants')
-        .doc(enseignantId)
-        .get();
-
-    if (!enseignantDoc.exists) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Position de l'enseignant non disponible."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    final enseignantData = enseignantDoc.data()!;
-    final enseignantLat = enseignantData['latitude'] as double;
-    final enseignantLon = enseignantData['longitude'] as double;
-
-    // 4️⃣ Récupérer la position de l'étudiant
-    Position etudiantPos;
-    try {
-      etudiantPos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Impossible de récupérer votre position."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    // 5️⃣ Calculer la distance exacte en mètres
-    double distance = Geolocator.distanceBetween(
-      enseignantLat,
-      enseignantLon,
-      etudiantPos.latitude,
-      etudiantPos.longitude,
-    );
-
-    // 6️⃣ Vérifier si l'étudiant est trop loin
-    if (distance > 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              "❌ Vous êtes trop loin de l'enseignant (${distance.toStringAsFixed(2)} m)."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    // 7️⃣ Marquer la présence
-    await markPresent();
-  }
-
-
   void _checkCode() {
     if (!_isSessionActive) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -314,7 +190,7 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
 
     String inputCode = codeController.text.trim();
     if (inputCode.toLowerCase() == widget.codeSeance.toLowerCase()) {
-      markPresentWithDistanceCheck();
+      markPresent();
       codeController.clear();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -330,8 +206,8 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
   @override
   Widget build(BuildContext context) {
     final horaireStr = DateFormat('HH:mm').format(widget.horaire.toDate());
-    final finStr = DateFormat('HH:mm').format(
-        widget.horaire.toDate().add(Duration(minutes: widget.dureeMinutes)));
+    final finStr = DateFormat('HH:mm')
+        .format(widget.horaire.toDate().add(Duration(minutes: widget.dureeMinutes)));
 
     return Scaffold(
       appBar: AppBar(
@@ -344,6 +220,7 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
+          textAlign: TextAlign.center,
         ),
         elevation: 4,
       ),
