@@ -78,6 +78,7 @@ class HistoriquePage extends StatelessWidget {
                       .get(),
                   builder: (context, coursSnapshot) {
                     if (!coursSnapshot.hasData) {
+
                       return const SizedBox();
                     }
 
