@@ -219,11 +219,13 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
 
   // ✅ Distance simplifiée (pas de formule géographique)
   Future<void> markPresentWithDistanceCheck() async {
+    // 1️⃣ Vérifier les permissions de localisation
     bool hasPermission = await _handleLocationPermission();
     if (!hasPermission) return;
 
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
+    // 2️⃣ Récupérer la séance
     final seanceDoc = await FirebaseFirestore.instance
         .collection('séances')
         .doc(widget.seanceId)
@@ -241,6 +243,7 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
 
     final enseignantId = seanceDoc['enseignantId'] as String;
 
+    // 3️⃣ Récupérer la position de l'enseignant
     final enseignantDoc = await FirebaseFirestore.instance
         .collection('positions_enseignants')
         .doc(enseignantId)
@@ -260,6 +263,7 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     final enseignantLat = enseignantData['latitude'] as double;
     final enseignantLon = enseignantData['longitude'] as double;
 
+    // 4️⃣ Récupérer la position de l'étudiant
     Position etudiantPos;
     try {
       etudiantPos = await Geolocator.getCurrentPosition(
@@ -275,12 +279,16 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       return;
     }
 
-    // ✅ Nouvelle formule simple :
-    double distance = ((enseignantLat - etudiantPos.latitude).abs() +
-        (enseignantLon - etudiantPos.longitude).abs()) *
-        111000;
+    // 5️⃣ Calculer la distance exacte en mètres
+    double distance = Geolocator.distanceBetween(
+      enseignantLat,
+      enseignantLon,
+      etudiantPos.latitude,
+      etudiantPos.longitude,
+    );
 
-    if (distance > 5) {
+    // 6️⃣ Vérifier si l'étudiant est trop loin
+    if (distance > 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -291,8 +299,10 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       return;
     }
 
+    // 7️⃣ Marquer la présence
     await markPresent();
   }
+
 
   void _checkCode() {
     if (!_isSessionActive) {
