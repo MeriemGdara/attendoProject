@@ -247,7 +247,7 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       etudiantPos.longitude,
     );
 
-    if (distance > 0.5) {
+    if (distance > 5) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
