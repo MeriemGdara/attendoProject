@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:geolocator/geolocator.dart';
 import 'SeanceDetailPage.dart';
 
 class SeancesEtudiantPage extends StatefulWidget {
@@ -90,7 +89,9 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
     final h = remaining.inHours;
     final m = remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
-    if (h > 0) return "$h h $m min";
+    if (h > 0) {
+      return "$h h $m min";
+    }
     return "$m:$s";
   }
 
@@ -139,10 +140,10 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
           style: GoogleFonts.fredoka(
             fontSize: 24,
             fontWeight: FontWeight.w700,
-            color: Colors.black,
+            color: Colors.white,
           ),
         ),
-        backgroundColor: const Color(0xFF78c8c0),
+        backgroundColor: const Color(0xFF78c8c0), // Updated to user's teal color
         elevation: 0,
         centerTitle: false,
       ),
@@ -163,12 +164,14 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
           }
 
           final seances = snapSeances.data!.docs;
+
           final now = DateTime.now();
           final sortedSeances = seances.toList()..sort((a, b) {
             final startA = (a['horaire'] as Timestamp).toDate();
             final startB = (b['horaire'] as Timestamp).toDate();
             final endA = startA.add(Duration(minutes: a['duree'] ?? 0));
             final endB = startB.add(Duration(minutes: b['duree'] ?? 0));
+
             final aIsActive = now.isAfter(startA) && now.isBefore(endA);
             final bIsActive = now.isAfter(startB) && now.isBefore(endB);
 
@@ -187,7 +190,6 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
               final description = s['description'] ?? '';
               final dureeMinutes = s['duree'] ?? 0;
               final codeSeance = s['code'] ?? '0000';
-              final enseignantId = s['enseignantId'] ?? '';
 
               return FutureBuilder(
                 future: FirebaseFirestore.instance.collection('cours').doc(coursId).get(),
@@ -250,99 +252,20 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
                         padding: const EdgeInsets.only(bottom: 16),
                         child: GestureDetector(
                           onTap: presenceActive
-                              ? () async {
-                            // Récupérer position étudiant
-                            Position? etudiantPos;
-                            try {
-                              bool serviceEnabled =
-                              await Geolocator.isLocationServiceEnabled();
-                              if (!serviceEnabled) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text(
-                                          'Veuillez activer la localisation')),
-                                );
-                                return;
-                              }
-
-                              LocationPermission permission =
-                              await Geolocator.checkPermission();
-                              if (permission == LocationPermission.denied) {
-                                permission =
-                                await Geolocator.requestPermission();
-                                if (permission == LocationPermission.denied ||
-                                    permission ==
-                                        LocationPermission.deniedForever) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'Permission localisation refusée')),
-                                  );
-                                  return;
-                                }
-                              }
-
-                              etudiantPos = await Geolocator.getCurrentPosition(
-                                  desiredAccuracy: LocationAccuracy.high);
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Erreur localisation : $e')),
-                              );
-                              return;
-                            }
-
-                            // Récupérer position enseignant
-                            final enseignantDoc = await FirebaseFirestore.instance
-                                .collection('positions_enseignants')
-                                .doc(enseignantId)
-                                .get();
-
-                            if (!enseignantDoc.exists) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Impossible de récupérer la position de l’enseignant')),
-                              );
-                              return;
-                            }
-
-                            final enseignantPos = enseignantDoc.data()!;
-                            final enseignantLat = enseignantPos['latitude'];
-                            final enseignantLon = enseignantPos['longitude'];
-
-                            // Calcul distance
-                            double distance = Geolocator.distanceBetween(
-                              etudiantPos.latitude,
-                              etudiantPos.longitude,
-                              enseignantLat,
-                              enseignantLon,
-                            );
-
-                            if (distance > 50) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      'Vous êtes trop loin de l’enseignant (${distance.toStringAsFixed(1)} m).'),
-                                  backgroundColor: Colors.redAccent,
-                                ),
-                              );
-                              return;
-                            }
-
-                            // Navigation
+                              ? () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => SeanceDetailPage(
                                   seanceId: s.id,
                                   nomCours: nomCours,
+
                                   description: description,
                                   horaire: horaire,
                                   dureeMinutes: dureeMinutes,
                                   classe: studentClasseGroupe!.split('_')[0],
                                   groupe: studentClasseGroupe!.split('_')[1],
                                   codeSeance: codeSeance,
-                                  enseignantId: enseignantId,
                                 ),
                               ),
                             );
@@ -353,11 +276,11 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            color: const Color(0xFFFFF5E6),
+                            color: Colors.white,
                             elevation: isEnCours ? 6 : 2,
                             shadowColor: isEnCours
-                                ? statusColor.withOpacity(0.3)
-                                : Colors.black.withOpacity(0.08),
+                                ? statusColor.withValues(alpha: 0.3)
+                                : Colors.black.withValues(alpha: 0.08),
                             child: Padding(
                               padding: const EdgeInsets.all(20),
                               child: Column(
@@ -411,6 +334,7 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
                                         ),
                                       ),
                                     ),
+
                                   if (countdownText != null)
                                     Padding(
                                       padding: const EdgeInsets.only(bottom: 12),
@@ -433,15 +357,17 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
                                         ),
                                       ),
                                     ),
+
                                   Text(
                                     nomCours,
                                     style: GoogleFonts.fredoka(
                                       fontSize: 20,
                                       fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF2F7B73),
+                                      color: const Color(0xFF1F2937),
                                     ),
                                   ),
                                   const SizedBox(height: 12),
+
                                   Row(
                                     children: [
                                       Expanded(
@@ -462,6 +388,7 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
                                     ],
                                   ),
                                   const SizedBox(height: 12),
+
                                   if (description.isNotEmpty) ...[
                                     Text(
                                       "Description",
@@ -483,16 +410,17 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
                                     ),
                                     const SizedBox(height: 12),
                                   ],
+
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 16,
                                       vertical: 12,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: statusColor.withOpacity(0.1),
+                                      color: statusColor.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: statusColor.withOpacity(0.3),
+                                        color: statusColor.withValues(alpha: 0.3),
                                         width: 1.5,
                                       ),
                                     ),
