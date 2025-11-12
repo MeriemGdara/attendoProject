@@ -2,6 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:googleapis/calendar/v3.dart' as calendar;
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+
+class GoogleAuthClient extends http.BaseClient {
+  final Map<String, String> _headers;
+  final http.Client _client = http.Client();
+
+  GoogleAuthClient(this._headers);
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    return _client.send(request..headers.addAll(_headers));
+  }
+}
 
 class NotesPage extends StatefulWidget {
   const NotesPage({super.key});
@@ -14,45 +30,146 @@ class _NotesPageState extends State<NotesPage> {
   final TextEditingController _titreController = TextEditingController();
   final TextEditingController _contenuController = TextEditingController();
   bool showAddCard = false;
-
-  /// 🔹 ID de la note en cours d'édition
   String? editingNoteId;
+  DateTime? _selectedDate;
 
-  /// 🔹 Récupérer l'ID du user connecté
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      calendar.CalendarApi.calendarScope,
+      'https://www.googleapis.com/auth/calendar.events',
+    ],
+  );
+
   String get userId => FirebaseAuth.instance.currentUser?.uid ?? '';
 
-  /// 🔹 Ajouter ou modifier une note
+  Future<http.Client?> _getGoogleAuthClient() async {
+    GoogleSignInAccount? account = _googleSignIn.currentUser;
+    account ??= await _googleSignIn.signInSilently();
+    account ??= await _googleSignIn.signIn();
+    if (account == null) return null;
+
+    final headers = await account.authHeaders;
+    return GoogleAuthClient(headers);
+  }
+
+  Future<String?> _ajouterEvenementCalendar(String titre, String contenu) async {
+    if (_selectedDate == null) return null;
+    try {
+      final client = await _getGoogleAuthClient();
+      if (client == null) return null;
+
+      final calendarApi = calendar.CalendarApi(client);
+      final event = calendar.Event(
+        summary: titre,
+        description: contenu,
+        start: calendar.EventDateTime(
+          dateTime: _selectedDate,
+          timeZone: "Africa/Tunis",
+        ),
+        end: calendar.EventDateTime(
+          dateTime: _selectedDate!.add(const Duration(hours: 1)),
+          timeZone: "Africa/Tunis",
+        ),
+      );
+
+      final createdEvent = await calendarApi.events.insert(event, "primary");
+      client.close();
+      return createdEvent.id;
+    } catch (e) {
+      debugPrint("Erreur lors de l'ajout à Google Calendar : $e");
+      return null;
+    }
+  }
+
+  Future<void> _choisirDate(BuildContext context) async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: DateTime(now.year + 2),
+    );
+    if (date == null) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (time == null) return;
+
+    setState(() {
+      _selectedDate = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
+  }
+
   Future<void> _enregistrerNote({String? id}) async {
     if (_titreController.text.isEmpty ||
         _contenuController.text.isEmpty ||
         userId.isEmpty) return;
 
-    if (id == null) {
-      // Nouvelle note
-      await FirebaseFirestore.instance.collection('notes').add({
-        'userId': userId,
-        'titre': _titreController.text,
-        'contenu': _contenuController.text,
-        'date': FieldValue.serverTimestamp(),
-      });
-    } else {
-      // Modifier note existante
-      await FirebaseFirestore.instance.collection('notes').doc(id).update({
-        'titre': _titreController.text,
-        'contenu': _contenuController.text,
-      });
+    String? eventId;
+    if (_selectedDate != null) {
+      eventId = await _ajouterEvenementCalendar(
+        _titreController.text,
+        _contenuController.text,
+      );
     }
+
+    final noteData = {
+      'userId': userId,
+      'titre': _titreController.text,
+      'contenu': _contenuController.text,
+      'date': FieldValue.serverTimestamp(),
+      if (_selectedDate != null) 'evenementDate': _selectedDate,
+      if (eventId != null) 'eventId': eventId,
+    };
+
+    if (id == null) {
+      await FirebaseFirestore.instance.collection('notes').add(noteData);
+    } else {
+      await FirebaseFirestore.instance.collection('notes').doc(id).update(noteData);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Note enregistrée avec succès")),
+    );
 
     _titreController.clear();
     _contenuController.clear();
-    editingNoteId = null; // réinitialiser
+    editingNoteId = null;
+    _selectedDate = null;
     setState(() => showAddCard = false);
   }
 
-  /// 🔹 Supprimer une note
   Future<void> _supprimerNote(String id) async {
+    final doc = await FirebaseFirestore.instance.collection('notes').doc(id).get();
+    final data = doc.data();
+    final eventId = data?['eventId'];
+
     await FirebaseFirestore.instance.collection('notes').doc(id).delete();
+
+    if (eventId != null) {
+      try {
+        final client = await _getGoogleAuthClient();
+        if (client == null) return;
+        final calendarApi = calendar.CalendarApi(client);
+        await calendarApi.events.delete("primary", eventId);
+        client.close();
+      } catch (e) {
+        debugPrint("Erreur suppression événement : $e");
+      }
+    }
   }
+
+  @override
+  void dispose() {
+    _titreController.dispose();
+    _contenuController.dispose();
+    super.dispose();
+  }
+  // ==============================================================
+  // 🔸 INTERFACE UTILISATEUR
+  // ==============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +186,7 @@ class _NotesPageState extends State<NotesPage> {
       ),
       body: Stack(
         children: [
-          // 🌄 Fond image
+          // 🌄 Arrière-plan
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -90,27 +207,14 @@ class _NotesPageState extends State<NotesPage> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-
               if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    "Erreur de chargement des notes",
-                    style: GoogleFonts.fredoka(color: Colors.white),
-                  ),
-                );
+                return const Center(child: Text("Erreur de chargement"));
               }
-
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return Center(
-                  child: Text(
-                    "Aucune note pour l’instant",
-                    style: GoogleFonts.fredoka(fontSize: 18, color: Colors.white),
-                  ),
-                );
+                return const Center(child: Text("Aucune note pour l’instant"));
               }
 
               final notes = snapshot.data!.docs;
-
               return ListView.builder(
                 padding: const EdgeInsets.only(
                     top: 80, left: 16, right: 16, bottom: 100),
@@ -121,8 +225,7 @@ class _NotesPageState extends State<NotesPage> {
 
                   final Timestamp? ts = note['date'];
                   final dateStr = ts != null
-                      ? DateTime.fromMillisecondsSinceEpoch(
-                      ts.millisecondsSinceEpoch)
+                      ? DateTime.fromMillisecondsSinceEpoch(ts.millisecondsSinceEpoch)
                       .toLocal()
                       .toString()
                       .split('.')[0]
@@ -147,39 +250,25 @@ class _NotesPageState extends State<NotesPage> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            note['contenu'] ?? '',
-                            style: GoogleFonts.fredoka(
-                              fontSize: 16,
-                              color: Colors.black87,
-                            ),
-                          ),
+                          Text(note['contenu'] ?? ''),
                           const SizedBox(height: 5),
-                          Text(
-                            dateStr,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey,
-                            ),
-                          ),
+                          Text(dateStr, style: const TextStyle(color: Colors.grey)),
                         ],
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.edit,
-                                color: Color(0xFF5fc2ba)),
+                            icon: const Icon(Icons.edit, color: Color(0xFF5fc2ba)),
                             onPressed: () {
                               _titreController.text = note['titre'];
                               _contenuController.text = note['contenu'];
-                              editingNoteId = noteId; // stocker l’ID
+                              editingNoteId = noteId;
                               setState(() => showAddCard = true);
                             },
                           ),
                           IconButton(
-                            icon: const Icon(Icons.delete,
-                                color: Colors.redAccent),
+                            icon: const Icon(Icons.delete, color: Colors.redAccent),
                             onPressed: () => _supprimerNote(noteId),
                           ),
                         ],
@@ -191,7 +280,7 @@ class _NotesPageState extends State<NotesPage> {
             },
           ),
 
-          // 🪄 Carte d’ajout / édition
+          // 🪄 Carte d’ajout / modification
           if (showAddCard)
             Center(
               child: Container(
@@ -214,6 +303,8 @@ class _NotesPageState extends State<NotesPage> {
                       ),
                     ),
                     const SizedBox(height: 10),
+
+                    // Champ titre
                     TextField(
                       controller: _titreController,
                       decoration: const InputDecoration(
@@ -222,6 +313,8 @@ class _NotesPageState extends State<NotesPage> {
                       ),
                     ),
                     const SizedBox(height: 10),
+
+                    // Champ contenu
                     TextField(
                       controller: _contenuController,
                       maxLines: 4,
@@ -230,7 +323,23 @@ class _NotesPageState extends State<NotesPage> {
                         border: OutlineInputBorder(),
                       ),
                     ),
+                    const SizedBox(height: 10),
+
+                    // Sélecteur de date
+                    TextButton.icon(
+                      onPressed: () => _choisirDate(context),
+                      icon: const Icon(Icons.calendar_today, color: Color(0xFF1A2B4A)),
+                      label: Text(
+                        _selectedDate == null
+                            ? "Choisir une date"
+                            : "Date : ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year} "
+                            "à ${_selectedDate!.hour.toString().padLeft(2, '0')}:${_selectedDate!.minute.toString().padLeft(2, '0')}",
+                        style: const TextStyle(color: Color(0xFF1A2B4A)),
+                      ),
+                    ),
                     const SizedBox(height: 15),
+
+                    // Boutons d’action
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -238,8 +347,7 @@ class _NotesPageState extends State<NotesPage> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1A2B4A),
                           ),
-                          onPressed: () =>
-                              _enregistrerNote(id: editingNoteId),
+                          onPressed: () => _enregistrerNote(id: editingNoteId),
                           child: const Text("Enregistrer",
                               style: TextStyle(color: Colors.white)),
                         ),
@@ -252,6 +360,7 @@ class _NotesPageState extends State<NotesPage> {
                             _titreController.clear();
                             _contenuController.clear();
                             editingNoteId = null;
+                            _selectedDate = null;
                             setState(() => showAddCard = false);
                           },
                           child: const Text("Annuler"),
@@ -273,6 +382,7 @@ class _NotesPageState extends State<NotesPage> {
                 _titreController.clear();
                 _contenuController.clear();
                 editingNoteId = null;
+                _selectedDate = null;
                 setState(() => showAddCard = true);
               },
               child: const Icon(Icons.add, color: Colors.white, size: 30),
