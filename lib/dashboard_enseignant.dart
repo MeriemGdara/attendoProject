@@ -109,7 +109,7 @@ class DashboardEnseignant extends StatelessWidget {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => AjoutCours()),
+                                MaterialPageRoute(builder: (context) => GestionCoursPage()),
                               );
 
                             },
