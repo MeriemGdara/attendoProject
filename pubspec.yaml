@@ -46,6 +46,8 @@ dependencies:
   google_sign_in: ^6.2.1
   googleapis: ^13.1.0
   googleapis_auth: ^1.4.0
+  flutter_local_notifications: ^18.0.1
+
 
 
 
@@ -68,6 +70,7 @@ flutter:
   assets:
     - assets/images/
     - assets/videos/intro.mp4
+
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

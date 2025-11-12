@@ -1,3 +1,4 @@
+import 'package:attendo/DiscussionsPage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import 'reaffecter_etudiants_page.dart';
 import 'Statistiques des étudiants.dart';
 import 'dashboard_enseignant.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'DiscussionsPage.dart';
 
 class GestionEtudiants extends StatefulWidget {
   const GestionEtudiants({super.key});
@@ -20,6 +22,30 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
   int nbClasses = 0;
   int nbGroupes = 0;
   bool chargement = true;
+
+  int nbMessagesNonLus=0;
+
+  void chargerMessagesNonLus() {
+    final enseignantId = FirebaseAuth.instance.currentUser!.uid;
+
+    FirebaseFirestore.instance
+        .collection('messages')
+        .where('enseignantId', isEqualTo: enseignantId)
+        .snapshots()
+        .listen((snapshot) {
+      int count = 0;
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['isRead'] == false && data['senderId'] != enseignantId) {
+          count++;
+        }
+      }
+      setState(() {
+        nbMessagesNonLus = count;
+      });
+    });
+  }
+
 
   // ✅ Fonction pour charger les données depuis Firestore
   Future<void> chargerDonnees() async {
@@ -56,6 +82,7 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
   void initState() {
     super.initState();
     chargerDonnees();
+    chargerMessagesNonLus();
   }
 
   @override
@@ -69,7 +96,7 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
             : SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.symmetric(
-                horizontal: 24, vertical: 40),
+                horizontal: 20, vertical: 15),
             child: Column(
               children: [
                 // ✅ En-tête avec flèche retour + texte
@@ -77,7 +104,7 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back,
-                          color: Color(0xFF1c2942), size: 28),
+                          color: Color(0xFF1c2942), size: 22),
                       onPressed: () {
                         Navigator.pushReplacement(
                           context,
@@ -89,11 +116,11 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                         );
                       },
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 50),
                     Text(
                       'Gestion étudiants',
                       style: GoogleFonts.fredoka(
-                        fontSize: 32,
+                        fontSize: 25,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF1c2942),
                       ),
@@ -101,7 +128,7 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                   ],
                 ),
 
-                const SizedBox(height: 50),
+                const SizedBox(height: 7),
 
                 // ✅ Logo rond
                 Container(
@@ -121,7 +148,7 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                   ),
                 ),
 
-                const SizedBox(height: 50),
+                const SizedBox(height: 20),
 
                 // ✅ 3 cartes statistiques alignées
                 Row(
@@ -145,7 +172,7 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                   ],
                 ),
 
-                const SizedBox(height: 50),
+                const SizedBox(height: 15),
 
                 // ✅ Menus
                 _MenuItem(
@@ -184,17 +211,75 @@ class _GestionEtudiantsState extends State<GestionEtudiants> {
                   },
                 ),
                 const SizedBox(height: 16),
-                _MenuItem(
-                  title: 'Suivre les statistiques',
+                GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) =>
-                          const SuivreStatistiquesPage()),
+                        builder: (context) => const DiscussionsPage(),
+                      ),
                     );
                   },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFd3edea),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Discussions',
+                          style: GoogleFonts.fredoka(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1c2942),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            if (nbMessagesNonLus > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '$nbMessagesNonLus',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: Color(0xFF1c2942),
+                              size: 28,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
+
+                const SizedBox(height: 16),
+        _MenuItem(
+          title: 'Suivre les statistiques',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) =>
+                  const SuivreStatistiquesPage()),
+            );
+          },
+        )
               ],
             ),
           ),

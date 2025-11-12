@@ -19,6 +19,7 @@ class _AjoutCoursState extends State<AjoutCours> {
   String nomEnseignant = '';
   String enseignantId = '';
   bool _isLoading = true;
+  int maxAbsences=0;
 
   @override
   void initState() {
@@ -70,6 +71,7 @@ class _AjoutCoursState extends State<AjoutCours> {
           'nomEnseignant': nomEnseignant,
           'enseignantId': enseignantId,
           'dateCreation': Timestamp.now(),
+          'maxAbsences' :maxAbsences,
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -187,6 +189,23 @@ class _AjoutCoursState extends State<AjoutCours> {
                         maxLines: 3,
                       ),
                       const SizedBox(height: 15),
+                      /// 🔥🔥 Champ Nombre max des absences
+                      TextFormField(
+                        decoration: _inputDecoration(
+                            "Nombre maximum d'absences", Icons.warning),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Entrez un nombre";
+                          }
+                          if (int.tryParse(value) == null) {
+                            return "Entrez un nombre valide";
+                          }
+                          return null;
+                        },
+                        onSaved: (value) => maxAbsences = int.parse(value!),
+                      ),
+                      const SizedBox(height: 20),
 
                       const Text(
                         "Enseignant",

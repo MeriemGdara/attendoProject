@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:attendo/SendMessagePage.dart';
 
 class RechercherFiltrerPage extends StatefulWidget {
   const RechercherFiltrerPage({super.key});
@@ -212,8 +213,7 @@ class _RechercherFiltrerPageState extends State<RechercherFiltrerPage> {
                             ),
                             elevation: 3,
                             child: ListTile(
-                              leading: const Icon(Icons.person,
-                                  color: Color(0xFF5fc2ba), size: 30),
+                              leading: const Icon(Icons.person, color: Color(0xFF5fc2ba), size: 30),
                               title: Text(
                                 etudiant['name'],
                                 style: GoogleFonts.fredoka(
@@ -225,8 +225,35 @@ class _RechercherFiltrerPageState extends State<RechercherFiltrerPage> {
                                 "Classe : ${etudiant['classe']} | Groupe : ${etudiant['groupe']}",
                                 style: const TextStyle(fontSize: 14),
                               ),
+                              trailing: ElevatedButton(
+                                onPressed: () {
+                                  // Rediriger vers la page de message en envoyant l'étudiant
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => SendMessagePage(
+
+                                        otherUserId: etudiant.id,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF1A2B4A),
+                                  padding: EdgeInsets.zero,
+                                  shape: const CircleBorder(),
+                                  elevation: 2,
+                                  minimumSize: const Size(36, 36),
+                                ),
+                                child: const Icon(
+                                  Icons.forum,
+                                  color: Colors.white,
+                                  size: 17,
+                                ),
+                              ),
                             ),
                           );
+
                         },
                       );
                     },

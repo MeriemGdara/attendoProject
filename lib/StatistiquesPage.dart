@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:attendo/SendMessagePage.dart';
 
 class StatistiquesPage extends StatefulWidget {
   const StatistiquesPage({super.key});
@@ -468,10 +469,10 @@ class _StatistiquesPageState extends State<StatistiquesPage> {
                           children: [
                             Text(
                               'Répartition des présences et absences de la classe $selectedClass',
-                               textAlign: TextAlign.center,
+                              textAlign: TextAlign.center,
                               style: GoogleFonts.fredoka(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                   color:const Color(0xFF1A2B4A)
                               ),
                             ),
@@ -537,9 +538,9 @@ class _StatistiquesPageState extends State<StatistiquesPage> {
                               'Progression des Présences par séance',
                               textAlign: TextAlign.center,
                               style: GoogleFonts.fredoka(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color:const Color(0xFF1A2B4A)
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color:const Color(0xFF1A2B4A)
                               ),
                             ),
                             const SizedBox(height: 15),
@@ -733,6 +734,7 @@ class _StatistiquesPageState extends State<StatistiquesPage> {
                                           ),
                                         ),
                                         const SizedBox(width: 10),
+                                        // Bouton info (séances) circulaire
                                         ElevatedButton(
                                           onPressed: () {
                                             setState(() {
@@ -741,17 +743,48 @@ class _StatistiquesPageState extends State<StatistiquesPage> {
                                           },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: primaryTeal,
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
+                                            padding: EdgeInsets.zero, // padding nul pour mieux contrôler la taille
+                                            shape: const CircleBorder(), // bouton circulaire
+                                            elevation: 2,
+                                            minimumSize: const Size(36, 36), // largeur = hauteur = cercle
                                           ),
                                           child: const Icon(
                                             Icons.info_outline,
                                             color: Colors.white,
-                                            size: 18,
+                                            size: 20,
                                           ),
                                         ),
+
+                                        const SizedBox(width: 8),
+
+// Bouton message circulaire bleu foncé
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            // Redirection vers la page SendMessagePage
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => SendMessagePage(
+
+                                                  otherUserId: student['id'],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF1A2B4A),
+                                            padding: EdgeInsets.zero,
+                                            shape: const CircleBorder(),
+                                            elevation: 2,
+                                            minimumSize: const Size(36, 36),
+                                          ),
+                                          child: const Icon(
+                                            Icons.forum,
+                                            color: Colors.white,
+                                            size: 17,
+                                          ),
+                                        ),
+
                                       ],
                                     ),
                                   );

@@ -30,11 +30,29 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
     _getEnseignantInfo();
   }
 
+  Stream<int> unreadMessagesStream() {
+    final enseignantId = widget.enseignantId;
+
+    return FirebaseFirestore.instance
+        .collection('messages')
+        .where('enseignantId', isEqualTo: enseignantId)
+        .snapshots()
+        .map((snapshot) {
+      int count = 0;
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['isRead'] == false && data['senderId'] != enseignantId) {
+          count++;
+        }
+      }
+      return count;
+    });
+  }
+
   Future<void> _getEnseignantInfo() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        // Pas d'utilisateur connecté — gérer selon ton flux (ex: rediriger vers connexion)
         if (mounted) {
           setState(() {
             nomEnseignant = 'Utilisateur non connecté';
@@ -45,8 +63,8 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
         return;
       }
 
-      // On suppose que le doc dans "users" a pour id l'uid
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final doc =
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
       if (doc.exists) {
         final data = doc.data()!;
@@ -55,7 +73,8 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
 
         if (mounted) {
           setState(() {
-            nomEnseignant = fetchedName.isNotEmpty ? fetchedName : 'Nom introuvable';
+            nomEnseignant =
+            fetchedName.isNotEmpty ? fetchedName : 'Nom introuvable';
             role = fetchedRole;
             _loading = false;
           });
@@ -70,7 +89,6 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
         }
       }
     } catch (e) {
-      // log + afficher quelque chose d'utile à l'utilisateur
       debugPrint('Erreur récupération utilisateur: $e');
       if (mounted) {
         setState(() {
@@ -88,7 +106,6 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // Logo
           Container(
             width: double.infinity,
             color: Colors.white,
@@ -102,13 +119,11 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
               ),
             ),
           ),
-
-          // Conteneur turquoise
           Expanded(
             child: Container(
               width: double.infinity,
               decoration: const BoxDecoration(
-                color: Color(0xFF78c8c0),
+                color: Color(0xFF8DD3CC),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(40),
                   topRight: Radius.circular(40),
@@ -117,8 +132,6 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
               child: Column(
                 children: [
                   const SizedBox(height: 1),
-
-                  // Titre Dashboard
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
                     child: Stack(
@@ -146,36 +159,47 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
-                  // Nom de l’enseignant connecté
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.person, // Icône de profil
-                        color: Colors.black,
-                        size: 28,
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.4),
+                        width: 1.5,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        nomEnseignant, // le nom récupéré depuis Firestore
-                        style: GoogleFonts.fredoka(
-                          color: Colors.black,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                    ),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 30,
+                          height: 25,
+                          child: const Icon(
+                            Icons.person,
+                            color: Color(0xFF152F5C),
+                            size: 22,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 5),
+                        Text(
+                          nomEnseignant,
+                          style: GoogleFonts.fredoka(
+                            color: const Color(0xFF152F5C),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // Grille des cartes
+                  const SizedBox(height: 0.2),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
                       child: GridView.count(
                         crossAxisCount: 2,
                         mainAxisSpacing: 30,
@@ -188,7 +212,9 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const ModifierProfileEnseignant()),
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                    const ModifierProfileEnseignant()),
                               );
                             },
                           ),
@@ -198,19 +224,65 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => GestionCoursPage()),
+                                MaterialPageRoute(
+                                    builder: (context) => GestionCoursPage()),
                               );
                             },
                           ),
+                          // Gestion étudiants avec badge
                           DashboardCard(
-                            imagePath: 'assets/images/gestion_etudiants.png',
                             label: 'Gestion étudiants',
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const GestionEtudiants()),
+                                MaterialPageRoute(
+                                    builder: (context) => const GestionEtudiants()),
                               );
                             },
+                            child: StreamBuilder<int>(
+                              stream: unreadMessagesStream(),
+                              builder: (context, snapshot) {
+                                final unreadCount = snapshot.data ?? 0;
+                                return Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Image.asset(
+                                      'assets/images/gestion_etudiants.png',
+                                      width: 120,
+                                      height: 120,
+                                      fit: BoxFit.contain,
+                                    ),
+                                    if (unreadCount > 0)
+                                      Positioned(
+                                        top: -5,
+                                        right: 3,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.white.withOpacity(0.4),
+                                                blurRadius: 6,
+                                                offset: const Offset(2, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Text(
+                                            '$unreadCount',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
+                            ),
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/classe.jpg',
@@ -218,7 +290,8 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const StatistiquesPage()),
+                                MaterialPageRoute(
+                                    builder: (context) => const StatistiquesPage()),
                               );
                             },
                           ),
@@ -228,7 +301,10 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
                             onTap: () {
                               Navigator.pushReplacement(
                                 context,
-                                MaterialPageRoute(builder: (context) => GestionSeancesPage(enseignantId: widget.enseignantId)),
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        GestionSeancesPage(
+                                            enseignantId: widget.enseignantId)),
                               );
                             },
                           ),
@@ -240,7 +316,8 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
                               if (mounted) {
                                 Navigator.pushReplacement(
                                   context,
-                                  MaterialPageRoute(builder: (context) => const ConnexionPage()),
+                                  MaterialPageRoute(
+                                      builder: (context) => const ConnexionPage()),
                                 );
                               }
                             },
@@ -259,17 +336,19 @@ class _DashboardEnseignantState extends State<DashboardEnseignant> {
   }
 }
 
-// Carte Dashboard avec animation au clic et image
+// Carte Dashboard avec option child
 class DashboardCard extends StatefulWidget {
-  final String imagePath;
+  final String? imagePath;
   final String label;
   final VoidCallback onTap;
+  final Widget? child;
 
   const DashboardCard({
     super.key,
-    required this.imagePath,
+    this.imagePath,
     required this.label,
     required this.onTap,
+    this.child,
   });
 
   @override
@@ -317,12 +396,13 @@ class _DashboardCardState extends State<DashboardCard> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                widget.imagePath,
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
-              ),
+              widget.child ??
+                  Image.asset(
+                    widget.imagePath!,
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.contain,
+                  ),
               const SizedBox(height: 2),
               Text(
                 widget.label,
