@@ -4,10 +4,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'GestionCoursPage.dart';
-import 'ModifierProfileEnseignant.dart';
-import 'connexion_page.dart';
 import 'gestionetudiants.dart';
 import 'GestionSeancesPage.dart';
+import 'AjoutCours.dart';
+import 'ModifierProfileEnseignant.dart';
+import 'connexion_page.dart';
+import 'CreerSeancePage.dart';
 
 
 class DashboardEnseignant extends StatelessWidget {
@@ -107,7 +109,7 @@ class DashboardEnseignant extends StatelessWidget {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => GestionCoursPage()),
+                                MaterialPageRoute(builder: (context) => AjoutCours()),
                               );
 
                             },
@@ -139,6 +141,7 @@ class DashboardEnseignant extends StatelessWidget {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(builder: (context) => GestionSeancesPage(enseignantId: FirebaseAuth.instance.currentUser!.uid)),
+
                               );
                             },
                           ),
