@@ -1,13 +1,78 @@
 import 'package:attendo/HistoriquePage.dart';
+import 'package:attendo/ModifierProfileEtudiant.dart';
+import 'package:attendo/connexion_page.dart';
+import 'package:attendo/notes_page.dart';
+import 'package:attendo/SeancesEtudiantPage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'ModifierProfileEtudiant.dart';
-import 'connexion_page.dart';
-import 'notes_page.dart';
-import 'SeancesEtudiantPage.dart';
 
-class DashboardEtudiant extends StatelessWidget {
+class DashboardEtudiant extends StatefulWidget {
   const DashboardEtudiant({super.key});
+
+  @override
+  State<DashboardEtudiant> createState() => _DashboardEtudiantState();
+}
+
+class _DashboardEtudiantState extends State<DashboardEtudiant> {
+  String nomEtudiant = '';
+  String role = '';
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _getEtudiantInfo();
+  }
+
+  Future<void> _getEtudiantInfo() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (mounted) {
+          setState(() {
+            nomEtudiant = 'Utilisateur non connecté';
+            _loading = false;
+          });
+        }
+        return;
+      }
+
+      final doc =
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+      if (doc.exists) {
+        final data = doc.data()!;
+        final fetchedName = (data['name'] ?? data['nom'] ?? '') as String;
+        final fetchedRole = (data['role'] ?? '') as String;
+
+        if (mounted) {
+          setState(() {
+            nomEtudiant =
+            fetchedName.isNotEmpty ? fetchedName : 'Nom introuvable';
+            role = fetchedRole;
+            _loading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            nomEtudiant = 'Profil introuvable';
+            _loading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Erreur lors du chargement de l’étudiant : $e');
+      if (mounted) {
+        setState(() {
+          nomEtudiant = 'Erreur de chargement';
+          _loading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,17 +136,42 @@ class DashboardEtudiant extends StatelessWidget {
                     ],
                   ),
 
+                  const SizedBox(height: 8),
+
+                  // Nom de l’étudiant connecté
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.person, // Icône de profil
+                        color: Colors.black,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        nomEtudiant, // le nom récupéré depuis Firestore
+                        style: GoogleFonts.fredoka(
+                          color: Colors.black,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+
+
                   const SizedBox(height: 20),
 
                   // Grille des cartes
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
                       child: GridView.count(
                         crossAxisCount: 2,
                         mainAxisSpacing: 30,
                         crossAxisSpacing: 40,
-                        childAspectRatio: 1.0, // carré
+                        childAspectRatio: 1.0,
                         children: [
                           DashboardCard(
                             imagePath: 'assets/images/student.jpg',
@@ -89,7 +179,10 @@ class DashboardEtudiant extends StatelessWidget {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const ModifierProfileEtudiant()),
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                  const ModifierProfileEtudiant(),
+                                ),
                               );
                             },
                           ),
@@ -99,7 +192,10 @@ class DashboardEtudiant extends StatelessWidget {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const SeancesEtudiantPage()),
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                  const SeancesEtudiantPage(),
+                                ),
                               );
                             },
                           ),
@@ -114,29 +210,37 @@ class DashboardEtudiant extends StatelessWidget {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const HistoriquePage()),
+                                MaterialPageRoute(
+                                  builder: (context) => const HistoriquePage(),
+                                ),
                               );
                             },
                           ),
-
                           DashboardCard(
                             imagePath: 'assets/images/gestion_etudiant.jpg',
                             label: 'Notes',
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const NotesPage()),
+                                MaterialPageRoute(
+                                  builder: (context) => const NotesPage(),
+                                ),
                               );
                             },
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/logout.png',
                             label: 'Se déconnecter',
-                            onTap: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => const ConnexionPage()),
-                              );
+                            onTap: () async {
+                              await FirebaseAuth.instance.signOut();
+                              if (mounted) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                      const ConnexionPage()),
+                                );
+                              }
                             },
                           ),
                         ],
