@@ -140,7 +140,7 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
           style: GoogleFonts.fredoka(
             fontSize: 24,
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: Colors.black,
           ),
         ),
         backgroundColor: const Color(0xFF78c8c0), // Updated to user's teal color
@@ -276,7 +276,7 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            color: Colors.white,
+                            color: const Color(0xFFFFF5E6),
                             elevation: isEnCours ? 6 : 2,
                             shadowColor: isEnCours
                                 ? statusColor.withValues(alpha: 0.3)
@@ -363,7 +363,7 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
                                     style: GoogleFonts.fredoka(
                                       fontSize: 20,
                                       fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF1F2937),
+                                      color: const Color(0xFF2F7B73),
                                     ),
                                   ),
                                   const SizedBox(height: 12),

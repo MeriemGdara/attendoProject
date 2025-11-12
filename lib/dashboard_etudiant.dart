@@ -94,7 +94,7 @@ class DashboardEtudiant extends StatelessWidget {
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/courEtudiant.jpg',
-                            label: 'Cours',
+                            label: 'Séances',
                             onTap: () {
                               Navigator.push(
                                 context,

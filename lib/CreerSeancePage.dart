@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:attendo/GestionSeancesPage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,7 +21,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
   DateTime? horaire;
   int duree = 60;
   String? courID;
-  String codeSeance = ''; // ✅ Code saisi par l'enseignant
+  String codeSeance = '';
   List<String> classesSelectionnees = [];
 
   List<Map<String, dynamic>> mesCours = [];
@@ -31,6 +32,17 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
   void initState() {
     super.initState();
     _chargerCoursEtClasses();
+
+    // Génération automatique du code dès l'ouverture de la page
+    codeSeance = generateUniqueCode();
+  }
+
+  String generateUniqueCode({int length = 6}) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    Random rnd = Random();
+    return String.fromCharCodes(
+      Iterable.generate(length, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))),
+    );
   }
 
   Future<void> _chargerCoursEtClasses() async {
@@ -40,11 +52,9 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
           .where('enseignantId', isEqualTo: widget.enseignantId)
           .get();
 
-      final queryClasses =
-      await FirebaseFirestore.instance.collection('classes').get();
+      final queryClasses = await FirebaseFirestore.instance.collection('classes').get();
 
       List<Map<String, dynamic>> classesAvecGroupes = [];
-
       for (var doc in queryClasses.docs) {
         List<dynamic> groupes = doc['groupes'] ?? [];
         for (var g in groupes) {
@@ -83,18 +93,14 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
         );
         String nomCours = coursSelectionne['nom'] ?? '';
 
-        // ✅ Vérification si le code existe déjà
         final existCheck = await FirebaseFirestore.instance
             .collection('séances')
             .where('code', isEqualTo: codeSeance)
             .get();
 
+        // Si le code existe déjà, générer un nouveau code
         if (existCheck.docs.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Ce code de séance existe déjà, veuillez en choisir un autre.')),
-          );
-          return;
+          codeSeance = generateUniqueCode();
         }
 
         await FirebaseFirestore.instance.collection('séances').add({
@@ -105,21 +111,14 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
           'courId': courID,
           'enseignantId': widget.enseignantId,
           'classes': classesSelectionnees,
-          'code': codeSeance, // ✅ Code saisi par l’enseignant
+          'code': codeSeance,
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Séance créée avec succès')),
         );
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DashboardEnseignant(
-              enseignantId: widget.enseignantId,
-            ),
-          ),
-        );
+        Navigator.pop(context); // Retour automatique après création
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur lors de la création : $e')),
@@ -142,46 +141,25 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
       body: Stack(
         children: [
-          // 🔹 Image de fond
           Positioned.fill(
             child: Image.asset(
               'assets/images/backgroundSeance2.jpg',
               fit: BoxFit.cover,
             ),
           ),
-
-          // 🔹 Flèche de retour
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios,
-                      color: Colors.black, size: 26),
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => GestionSeancesPage(
-                          enseignantId: widget.enseignantId,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-
-          // 🔹 Conteneur blanc scrollable
           Align(
             alignment: Alignment.bottomCenter,
             child: SingleChildScrollView(
               child: Container(
-                margin: const EdgeInsets.only(top: 150),
+                margin: const EdgeInsets.only(top: 100),
                 padding:
                 const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
                 decoration: const BoxDecoration(
@@ -212,13 +190,22 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-
                       _buildTextField("Nom de la séance", Icons.book,
                               (v) => nom = v, true),
                       const SizedBox(height: 15),
 
-                      _buildTextField("Code de la séance", Icons.qr_code,
-                              (v) => codeSeance = v, true),
+                      // 🔹 Affichage du code généré automatiquement
+                      Row(
+                        children: [
+                          const Icon(Icons.qr_code, color: Color(0xFF58B6B3)),
+                          const SizedBox(width: 10),
+                          Text(
+                            "Code de la séance : $codeSeance",
+                            style: GoogleFonts.fredoka(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 15),
 
                       _buildTextField("Description", Icons.description,
@@ -302,8 +289,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                         ))
                             .toList(),
                         onChanged: (value) => setState(() => courID = value),
-                        validator: (value) =>
-                        value == null ? 'Requis' : null,
+                        validator: (value) => value == null ? 'Requis' : null,
                       ),
                       const SizedBox(height: 15),
 

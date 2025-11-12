@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 class RechercheSeancesPage extends StatefulWidget {
   final String enseignantId;
@@ -13,6 +14,19 @@ class RechercheSeancesPage extends StatefulWidget {
 
 class _RechercheSeancesPageState extends State<RechercheSeancesPage> {
   String searchQuery = "";
+
+  Future<void> supprimerSeance(BuildContext context, String seanceId) async {
+    try {
+      await FirebaseFirestore.instance.collection('séances').doc(seanceId).delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Séance supprimée avec succès")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Erreur : $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,19 +45,15 @@ class _RechercheSeancesPageState extends State<RechercheSeancesPage> {
       ),
       body: Stack(
         children: [
-          // 🔹 Image de fond
           Positioned.fill(
             child: Image.asset(
               'assets/images/backgroundSeance1.jpg',
               fit: BoxFit.cover,
             ),
           ),
-
-          // 🔹 Contenu
           SafeArea(
             child: Column(
               children: [
-                // 🔸 Champ de recherche
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: TextField(
@@ -65,8 +75,6 @@ class _RechercheSeancesPageState extends State<RechercheSeancesPage> {
                         setState(() => searchQuery = value.toLowerCase()),
                   ),
                 ),
-
-                // 🔸 Liste des cours avec leurs séances
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
@@ -93,8 +101,7 @@ class _RechercheSeancesPageState extends State<RechercheSeancesPage> {
                       return ListView(
                         padding: const EdgeInsets.all(16),
                         children: coursDocs.map((coursDoc) {
-                          final coursData =
-                          coursDoc.data() as Map<String, dynamic>;
+                          final coursData = coursDoc.data() as Map<String, dynamic>;
                           final coursId = coursDoc.id;
                           final coursNom = coursData['nomCours'] ?? 'Sans titre';
 
@@ -104,30 +111,19 @@ class _RechercheSeancesPageState extends State<RechercheSeancesPage> {
                                 .where('courId', isEqualTo: coursId)
                                 .snapshots(),
                             builder: (context, seancesSnapshot) {
-                              if (!seancesSnapshot.hasData) {
-                                return const SizedBox();
-                              }
+                              if (!seancesSnapshot.hasData) return const SizedBox();
 
-                              final seancesDocs = seancesSnapshot.data!.docs
-                                  .where((seanceDoc) {
-                                final seanceData = seanceDoc.data()
-                                as Map<String, dynamic>;
-                                final nomSeance =
-                                (seanceData['nom'] ?? '').toLowerCase();
+                              final seancesDocs = seancesSnapshot.data!.docs.where((seanceDoc) {
+                                final seanceData = seanceDoc.data() as Map<String, dynamic>;
+                                final nomSeance = (seanceData['nom'] ?? '').toLowerCase();
                                 return nomSeance.contains(searchQuery) ||
-                                    coursNom
-                                        .toLowerCase()
-                                        .contains(searchQuery);
+                                    coursNom.toLowerCase().contains(searchQuery);
                               }).toList();
 
-                              if (seancesDocs.isEmpty) {
-                                return const SizedBox();
-                              }
+                              if (seancesDocs.isEmpty) return const SizedBox();
 
-                              // 🔹 Carte du cours
                               return Container(
-                                margin:
-                                const EdgeInsets.symmetric(vertical: 10.0),
+                                margin: const EdgeInsets.symmetric(vertical: 10.0),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFDFF7F6),
                                   borderRadius: BorderRadius.circular(16),
@@ -157,50 +153,141 @@ class _RechercheSeancesPageState extends State<RechercheSeancesPage> {
                                       ),
                                     ),
                                     children: seancesDocs.map((seanceDoc) {
-                                      final seanceData = seanceDoc.data()
-                                      as Map<String, dynamic>;
+                                      final seanceData = seanceDoc.data() as Map<String, dynamic>;
+                                      final Timestamp? horaireTimestamp = seanceData['horaire'] as Timestamp?;
+                                      final dateHeure = horaireTimestamp?.toDate();
+                                      final duree = seanceData['duree'] ?? 60;
+                                      final maintenant = DateTime.now();
+
+                                      // Statut dynamique
+                                      String statutSeance() {
+                                        if (dateHeure == null) return "";
+                                        final finSeance = dateHeure.add(Duration(minutes: duree));
+                                        if (maintenant.isAfter(finSeance)) return "Terminé";
+                                        if (maintenant.isAfter(dateHeure) && maintenant.isBefore(finSeance)) return "En cours";
+                                        final diff = dateHeure.difference(maintenant);
+                                        final minutes = diff.inMinutes;
+                                        final secondes = diff.inSeconds % 60;
+                                        return "Commence dans ${minutes.abs()}m ${secondes.abs()}s";
+                                      }
+
+                                      bool peutSupprimer() {
+                                        if (dateHeure == null) return false;
+                                        final finSeance = dateHeure.add(Duration(minutes: duree));
+                                        return !(maintenant.isBefore(finSeance) && maintenant.isBefore(dateHeure));
+                                      }
+
                                       return Container(
-                                        margin: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 5),
+                                        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius:
-                                          BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(12),
                                           boxShadow: [
                                             BoxShadow(
-                                              color:
-                                              Colors.black.withOpacity(0.1),
+                                              color: Colors.black.withOpacity(0.1),
                                               blurRadius: 4,
                                               offset: const Offset(2, 2),
                                             ),
                                           ],
                                         ),
-                                        child: ListTile(
-                                          title: Text(
-                                            seanceData['nom'] ??
-                                                'Séance sans titre',
-                                            style: GoogleFonts.fredoka(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                              color: Colors.black,
-                                            ),
-                                          ),
-                                          subtitle: Text(
-                                            seanceData['description'] ?? '',
-                                            style: GoogleFonts.fredoka(
-                                              fontSize: 14,
-                                              color: Colors.black87,
-                                            ),
-                                          ),
-                                          trailing: Text(
-                                            seanceData['duree'] != null
-                                                ? "${seanceData['duree']} min"
-                                                : '',
-                                            style: GoogleFonts.fredoka(
-                                                fontSize: 13,
-                                                color:
-                                                const Color(0xFF2B6D6A)),
+                                        child: IntrinsicHeight(
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      seanceData['nom'] ?? 'Séance sans titre',
+                                                      style: GoogleFonts.fredoka(
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 16,
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    if (seanceData['description'] != null)
+                                                      Text(
+                                                        seanceData['description'],
+                                                        style: GoogleFonts.fredoka(
+                                                          fontSize: 14,
+                                                          color: Colors.black87,
+                                                        ),
+                                                      ),
+                                                    if (dateHeure != null)
+                                                      Text(
+                                                        "📅 ${DateFormat('dd/MM/yyyy HH:mm').format(dateHeure)}",
+                                                        style: GoogleFonts.fredoka(
+                                                          fontSize: 14,
+                                                          color: Colors.black54,
+                                                        ),
+                                                      ),
+                                                    if (seanceData['code'] != null)
+                                                      RichText(
+                                                        text: TextSpan(
+                                                          children: [
+                                                            TextSpan(
+                                                              text: "🔑 Code : ",
+                                                              style: GoogleFonts.fredoka(
+                                                                fontSize: 14,
+                                                                fontWeight: FontWeight.bold,
+                                                                color: Colors.black,
+                                                              ),
+                                                            ),
+                                                            TextSpan(
+                                                              text: seanceData['code'],
+                                                              style: GoogleFonts.fredoka(
+                                                                fontSize: 14,
+                                                                fontWeight: FontWeight.bold,
+                                                                color: Colors.green.shade900,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                                    decoration: BoxDecoration(
+                                                      color: statutSeance() == "Terminé"
+                                                          ? Colors.grey
+                                                          : statutSeance() == "En cours"
+                                                          ? Colors.orange
+                                                          : Colors.blue,
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Text(
+                                                      statutSeance(),
+                                                      textAlign: TextAlign.center,
+                                                      style: GoogleFonts.fredoka(
+                                                        color: Colors.white,
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  GestureDetector(
+                                                    onTap: peutSupprimer()
+                                                        ? null
+                                                        : () => supprimerSeance(context, seanceDoc.id),
+                                                    child: Icon(
+                                                      Icons.delete,
+                                                      color: peutSupprimer() ? Colors.grey : Colors.redAccent,
+                                                      size: 26,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       );

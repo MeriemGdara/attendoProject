@@ -38,10 +38,14 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
   DateTime? _attendanceTime;
   final TextEditingController codeController = TextEditingController();
 
+  // 🔹 Nouvelle variable pour stocker le nom de la séance
+  String nomSeance = "Chargement...";
+
   @override
   void initState() {
     super.initState();
     _checkSessionStatus();
+    _loadNomSeance(); // 🔹 Charger le nom une seule fois
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
@@ -52,11 +56,10 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       final sessionStart = widget.horaire.toDate();
       final maxDuration = sessionStart.add(const Duration(minutes: 15));
 
-      // Timer automatique pour marquer absent après 15 minutes
       if (_isSessionActive && !_isPresent && now.isAfter(maxDuration)) {
         markAbsent();
         if (mounted) {
-          Navigator.pop(context); // Redirection automatique
+          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('⏰ Temps dépassé, vous êtes marqué Absent.'),
@@ -67,6 +70,30 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
         }
       }
     });
+  }
+
+  // 🔹 Fonction pour charger le nom de la séance une seule fois
+  Future<void> _loadNomSeance() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('séances')
+          .doc(widget.seanceId)
+          .get();
+      if (doc.exists) {
+        setState(() {
+          nomSeance = doc['nom'] ?? 'Nom non disponible';
+        });
+      } else {
+        setState(() {
+          nomSeance = 'Séance introuvable';
+        });
+      }
+    } catch (e) {
+      print("Erreur lors du chargement du nom de séance : $e");
+      setState(() {
+        nomSeance = 'Erreur de chargement';
+      });
+    }
   }
 
   @override
@@ -263,13 +290,31 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      "Code séance : ${widget.codeSeance}",
-                      style: GoogleFonts.fredoka(
-                        color: Colors.black87,
-                        fontSize: 18,
+
+                    // 🔹 Affichage direct du nom chargé une seule fois
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: "Nom de la séance : ",
+                            style: GoogleFonts.fredoka(
+                              color: Colors.black87,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text: nomSeance,
+                            style: GoogleFonts.fredoka(
+                              color: Colors.green.shade900, // vert foncé pour le nom seulement
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+
                   ],
                 ),
               ),
