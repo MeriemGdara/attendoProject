@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:attendo/GestionSeancesPage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,17 +21,28 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
   DateTime? horaire;
   int duree = 60;
   String? courID;
+  String codeSeance = '';
   List<String> classesSelectionnees = [];
 
   List<Map<String, dynamic>> mesCours = [];
   List<Map<String, dynamic>> mesClasses = [];
-
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _chargerCoursEtClasses();
+
+    // Génération automatique du code dès l'ouverture de la page
+    codeSeance = generateUniqueCode();
+  }
+
+  String generateUniqueCode({int length = 6}) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    Random rnd = Random();
+    return String.fromCharCodes(
+      Iterable.generate(length, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))),
+    );
   }
 
   Future<void> _chargerCoursEtClasses() async {
@@ -43,7 +55,6 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
       final queryClasses = await FirebaseFirestore.instance.collection('classes').get();
 
       List<Map<String, dynamic>> classesAvecGroupes = [];
-
       for (var doc in queryClasses.docs) {
         List<dynamic> groupes = doc['groupes'] ?? [];
         for (var g in groupes) {
@@ -76,11 +87,21 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
         courID != null &&
         classesSelectionnees.isNotEmpty) {
       try {
-        final coursSelectionne =
-        mesCours.firstWhere((c) => c['id'] == courID, orElse: () => {'nom': ''});
+        final coursSelectionne = mesCours.firstWhere(
+              (c) => c['id'] == courID,
+          orElse: () => {'nom': ''},
+        );
         String nomCours = coursSelectionne['nom'] ?? '';
 
-        String codeSeance = '${nomCours.replaceAll(' ', '')}123';
+        final existCheck = await FirebaseFirestore.instance
+            .collection('séances')
+            .where('code', isEqualTo: codeSeance)
+            .get();
+
+        // Si le code existe déjà, générer un nouveau code
+        if (existCheck.docs.isNotEmpty) {
+          codeSeance = generateUniqueCode();
+        }
 
         await FirebaseFirestore.instance.collection('séances').add({
           'nom': nom,
@@ -97,14 +118,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
           const SnackBar(content: Text('Séance créée avec succès')),
         );
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DashboardEnseignant(
-              enseignantId: widget.enseignantId,
-            ),
-          ),
-        );
+        Navigator.pop(context); // Retour automatique après création
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur lors de la création : $e')),
@@ -127,46 +141,27 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
       body: Stack(
         children: [
-          // 🔹 Image de fond
           Positioned.fill(
             child: Image.asset(
               'assets/images/backgroundSeance2.jpg',
               fit: BoxFit.cover,
             ),
           ),
-
-          // 🔹 Flèche de retour
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 26),
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => GestionSeancesPage(
-                          enseignantId: widget.enseignantId,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-
-          // 🔹 Conteneur blanc scrollable (forme arrondie en bas seulement)
           Align(
             alignment: Alignment.bottomCenter,
             child: SingleChildScrollView(
               child: Container(
-                margin: EdgeInsets.only(top: 150), // espace pour voir le design en haut
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+                margin: const EdgeInsets.only(top: 100),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
@@ -189,22 +184,33 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                       Text(
                         "Créer une séance",
                         style: GoogleFonts.fredoka(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF2C3E50)),
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF2C3E50),
+                        ),
                       ),
                       const SizedBox(height: 20),
-
-                      _buildTextField("Nom de la séance", Icons.book, (v) => nom = v, true),
+                      _buildTextField("Nom de la séance", Icons.book,
+                              (v) => nom = v, true),
                       const SizedBox(height: 15),
 
-                      _buildTextField(
-                        "Description",
-                        Icons.description,
-                            (v) => description = v,
-                        false,
-                        maxLines: 3,
+                      // 🔹 Affichage du code généré automatiquement
+                      Row(
+                        children: [
+                          const Icon(Icons.qr_code, color: Color(0xFF58B6B3)),
+                          const SizedBox(width: 10),
+                          Text(
+                            "Code de la séance : $codeSeance",
+                            style: GoogleFonts.fredoka(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 15),
+
+                      _buildTextField("Description", Icons.description,
+                              (v) => description = v, false,
+                          maxLines: 3),
                       const SizedBox(height: 15),
 
                       Text(
@@ -251,16 +257,21 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 14),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25)),
+                            borderRadius: BorderRadius.circular(25),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 15),
 
                       DropdownButtonFormField<int>(
-                        decoration: _inputDecoration("Durée (minutes)", Icons.timer),
+                        decoration:
+                        _inputDecoration("Durée (minutes)", Icons.timer),
                         value: duree,
                         items: [30, 60, 90, 120]
-                            .map((e) => DropdownMenuItem(value: e, child: Text('$e minutes')))
+                            .map((e) => DropdownMenuItem(
+                          value: e,
+                          child: Text('$e minutes'),
+                        ))
                             .toList(),
                         onChanged: (value) => setState(() => duree = value!),
                       ),
@@ -268,7 +279,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
 
                       DropdownButtonFormField<String>(
                         isExpanded: true,
-                        decoration: _inputDecoration("Sélectionner le cours", Icons.book),
+                        decoration: _inputDecoration(
+                            "Sélectionner le cours", Icons.book),
                         value: courID,
                         items: mesCours
                             .map((c) => DropdownMenuItem<String>(
@@ -288,7 +300,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                       ),
                       MultiSelectDialogField(
                         items: mesClasses
-                            .map((c) => MultiSelectItem<String>(c['id'], c['nom']))
+                            .map((c) =>
+                            MultiSelectItem<String>(c['id'], c['nom']))
                             .toList(),
                         title: const Text("Classes"),
                         selectedColor: const Color(0xFF58B6B3),
@@ -300,7 +313,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: const Color(0xFF58B6B3), width: 1.5),
+                          border: Border.all(
+                              color: const Color(0xFF58B6B3), width: 1.5),
                         ),
                         initialValue: classesSelectionnees,
                         onConfirm: (values) {
@@ -323,15 +337,15 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                           label: const Text(
                             "Créer séance",
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600),
                           ),
                           onPressed: _sauvegarderSeance,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF58B6B3),
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(25),
                             ),
@@ -367,7 +381,8 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
     );
   }
 
-  Widget _buildTextField(String label, IconData icon, Function(String) onChanged, bool required,
+  Widget _buildTextField(String label, IconData icon,
+      Function(String) onChanged, bool required,
       {int maxLines = 1}) {
     return TextFormField(
       decoration: _inputDecoration(label, icon),
