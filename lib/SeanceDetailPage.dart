@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 
 class SeanceDetailPage extends StatefulWidget {
   final String seanceId;
@@ -14,6 +16,7 @@ class SeanceDetailPage extends StatefulWidget {
   final String classe;
   final String groupe;
   final String codeSeance;
+  final String enseignantId;
 
   const SeanceDetailPage({
     super.key,
@@ -25,6 +28,7 @@ class SeanceDetailPage extends StatefulWidget {
     required this.classe,
     required this.groupe,
     required this.codeSeance,
+    required this.enseignantId,
   });
 
   @override
@@ -38,10 +42,14 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
   DateTime? _attendanceTime;
   final TextEditingController codeController = TextEditingController();
 
+  // 🔹 Nouvelle variable pour stocker le nom de la séance
+  String nomSeance = "Chargement...";
+
   @override
   void initState() {
     super.initState();
     _checkSessionStatus();
+    _loadNomSeance(); // 🔹 Charger le nom une seule fois
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
@@ -52,11 +60,10 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       final sessionStart = widget.horaire.toDate();
       final maxDuration = sessionStart.add(const Duration(minutes: 15));
 
-      // Timer automatique pour marquer absent après 15 minutes
       if (_isSessionActive && !_isPresent && now.isAfter(maxDuration)) {
         markAbsent();
         if (mounted) {
-          Navigator.pop(context); // Redirection automatique
+          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('⏰ Temps dépassé, vous êtes marqué Absent.'),
@@ -67,6 +74,30 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
         }
       }
     });
+  }
+
+  // 🔹 Fonction pour charger le nom de la séance une seule fois
+  Future<void> _loadNomSeance() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('séances')
+          .doc(widget.seanceId)
+          .get();
+      if (doc.exists) {
+        setState(() {
+          nomSeance = doc['nom'] ?? 'Nom non disponible';
+        });
+      } else {
+        setState(() {
+          nomSeance = 'Séance introuvable';
+        });
+      }
+    } catch (e) {
+      print("Erreur lors du chargement du nom de séance : $e");
+      setState(() {
+        nomSeance = 'Erreur de chargement';
+      });
+    }
   }
 
   @override
@@ -180,7 +211,39 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     }
   }
 
-  void _checkCode() {
+  // --- Récupération de la position utilisateur ---
+  Future<Position?> getPositionUtilisateur() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return null;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) return null;
+    }
+
+    return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+  }
+
+  double calculerDistance(double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371000; // Rayon de la Terre en mètres
+    double dLat = (lat2 - lat1) * pi / 180;
+    double dLon = (lon2 - lon1) * pi / 180;
+
+    double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * pi / 180) *
+            cos(lat2 * pi / 180) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  // --- Vérification du code et distance ---
+  void _checkCode() async {
     if (!_isSessionActive) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('La séance n\'est pas active.')),
@@ -188,18 +251,72 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
       return;
     }
 
-    String inputCode = codeController.text.trim();
-    if (inputCode.toLowerCase() == widget.codeSeance.toLowerCase()) {
-      markPresent();
-      codeController.clear();
-    } else {
+    try {
+      // Récupération position enseignant
+      final enseignantDoc = await FirebaseFirestore.instance
+          .collection('positions_enseignants')
+          .doc(widget.enseignantId)
+          .get();
+
+      if (!enseignantDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Impossible de récupérer la position de l’enseignant.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      final enseignantPos = enseignantDoc.data()!;
+      final enseignantLat = enseignantPos['latitude'];
+      final enseignantLon = enseignantPos['longitude'];
+
+      // Position de l'étudiant
+      final etudiantPos = await getPositionUtilisateur();
+      if (etudiantPos == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Impossible de récupérer votre position.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      // Distance
+      double distance = calculerDistance(
+          enseignantLat, enseignantLon, etudiantPos.latitude, etudiantPos.longitude);
+
+      if (distance > 5) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Vous êtes trop loin de l’enseignant (${distance.toStringAsFixed(1)} m).'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      // Vérification code
+      String inputCode = codeController.text.trim();
+      if (inputCode.toLowerCase() == widget.codeSeance.toLowerCase()) {
+        await markPresent();
+        codeController.clear();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Code incorrect'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        codeController.clear();
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ Code incorrect'),
-          backgroundColor: Colors.redAccent,
-        ),
+        SnackBar(content: Text('Erreur: $e')),
       );
-      codeController.clear();
     }
   }
 
@@ -263,13 +380,31 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      "Code séance : ${widget.codeSeance}",
-                      style: GoogleFonts.fredoka(
-                        color: Colors.black87,
-                        fontSize: 18,
+
+                    // 🔹 Affichage direct du nom chargé une seule fois
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: "Nom de la séance : ",
+                            style: GoogleFonts.fredoka(
+                              color: Colors.black87,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text: nomSeance,
+                            style: GoogleFonts.fredoka(
+                              color: Colors.green.shade900, // vert foncé pour le nom seulement
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+
                   ],
                 ),
               ),

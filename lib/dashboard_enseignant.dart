@@ -136,7 +136,7 @@ class DashboardEnseignant extends StatelessWidget {
                           ),
                           DashboardCard(
                             imagePath: 'assets/images/online_L1.jpg',
-                            label: 'Ajouter séance',
+                            label: 'Gestion séances',
                             onTap: () {
                               Navigator.pushReplacement(
                                 context,

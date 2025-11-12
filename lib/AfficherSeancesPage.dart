@@ -34,8 +34,7 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
       appBar: AppBar(
         title: Text(
           "Mes Séances",
-          style: GoogleFonts.fredoka(
-              fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+          style: GoogleFonts.fredoka(fontSize: 25, fontWeight: FontWeight.bold, color: Colors.black),
         ),
         centerTitle: true,
         backgroundColor: const Color(0xFF78c8c0),
@@ -44,15 +43,12 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
       ),
       body: Stack(
         children: [
-          // 🔹 Image de fond
           Positioned.fill(
             child: Image.asset(
               'assets/images/backgroundSeance1.jpg',
               fit: BoxFit.cover,
             ),
           ),
-
-          // 🔹 Contenu principal
           SafeArea(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -60,18 +56,11 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                   .where('enseignantId', isEqualTo: enseignantId)
                   .snapshots(),
               builder: (context, coursSnapshot) {
-                if (!coursSnapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
+                if (!coursSnapshot.hasData) return const Center(child: CircularProgressIndicator());
                 final coursDocs = coursSnapshot.data!.docs;
                 if (coursDocs.isEmpty) {
                   return Center(
-                    child: Text(
-                      "Aucun cours trouvé.",
-                      style: GoogleFonts.fredoka(
-                          fontSize: 18, color: Colors.black),
-                    ),
+                    child: Text("Aucun cours trouvé.", style: GoogleFonts.fredoka(fontSize: 20, color: Colors.black)),
                   );
                 }
 
@@ -88,121 +77,138 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                           .where('courId', isEqualTo: coursId)
                           .snapshots(),
                       builder: (context, seancesSnapshot) {
-                        if (!seancesSnapshot.hasData) {
-                          return const SizedBox();
-                        }
-
+                        if (!seancesSnapshot.hasData) return const SizedBox();
                         final seancesDocs = seancesSnapshot.data!.docs;
-
                         if (seancesDocs.isEmpty) return const SizedBox();
 
-                        // 🔹 Carte du cours
                         return Container(
-                          margin: const EdgeInsets.symmetric(vertical: 10.0),
+                          margin: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
                             color: const Color(0xFFDFF7F6),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: const Offset(2, 3),
-                              ),
+                              BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(2, 3)),
                             ],
                           ),
                           child: Theme(
-                            data: Theme.of(context).copyWith(
-                              dividerColor: Colors.transparent,
-                            ),
+                            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                             child: ExpansionTile(
                               iconColor: const Color(0xFF2B6D6A),
                               collapsedIconColor: const Color(0xFF2B6D6A),
-                              leading: const Icon(Icons.book_outlined,
-                                  color: Color(0xFF2B6D6A), size: 35),
+                              leading: const Icon(Icons.book_outlined, color: Color(0xFF2B6D6A), size: 35),
                               title: Text(
                                 coursNom,
                                 style: GoogleFonts.fredoka(
-                                  fontSize: 18,
+                                  fontSize: 23,
                                   fontWeight: FontWeight.bold,
                                   color: const Color(0xFF2B6D6A),
                                 ),
                               ),
                               children: seancesDocs.map((seanceDoc) {
-                                final seanceData =
-                                seanceDoc.data() as Map<String, dynamic>;
-                                final horaire = seanceData['horaire'] as Timestamp?;
-                                final dateHeure = horaire?.toDate();
+                                final seanceData = seanceDoc.data() as Map<String, dynamic>;
+                                final Timestamp? horaireTimestamp = seanceData['horaire'] as Timestamp?;
+                                final dateHeure = horaireTimestamp?.toDate();
+                                final duree = seanceData['duree'] ?? 60;
                                 final maintenant = DateTime.now();
-                                final bool seancePasse = dateHeure != null &&
-                                    dateHeure.isBefore(maintenant);
+
+                                String statutSeance() {
+                                  if (dateHeure == null) return "";
+                                  final finSeance = dateHeure.add(Duration(minutes: duree));
+                                  if (maintenant.isAfter(finSeance)) return "Terminé";
+                                  if (maintenant.isAfter(dateHeure) && maintenant.isBefore(finSeance)) return "En cours";
+                                  final diff = dateHeure.difference(maintenant);
+                                  final minutes = diff.inMinutes;
+                                  final secondes = diff.inSeconds % 60;
+                                  return "Commence dans ${minutes.abs()}m ${secondes.abs()}s";
+                                }
+
+                                bool peutSupprimer() {
+                                  if (dateHeure == null) return false;
+                                  final finSeance = dateHeure.add(Duration(minutes: duree));
+                                  return !(maintenant.isBefore(finSeance) && maintenant.isBefore(dateHeure));
+                                }
 
                                 return Container(
-                                  margin: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 5),
+                                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 4,
-                                        offset: const Offset(2, 2),
-                                      ),
-                                    ],
+                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(2, 2))],
                                   ),
-                                  child: ListTile(
-                                    title: Text(
-                                      seanceData['nom'] ?? 'Séance sans titre',
-                                      style: GoogleFonts.fredoka(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    subtitle: Column(
-                                      crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  child: IntrinsicHeight(
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
                                       children: [
-                                        const SizedBox(height: 4),
-                                        if (seanceData['description'] != null)
-                                          Text(
-                                            seanceData['description'],
-                                            style: GoogleFonts.fredoka(
-                                              fontSize: 14,
-                                              color: Colors.black87,
-                                            ),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                seanceData['nom'] ?? 'Séance sans titre',
+                                                style: GoogleFonts.fredoka(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.black),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              if (seanceData['description'] != null)
+                                                Text(
+                                                  seanceData['description'],
+                                                  style: GoogleFonts.fredoka(fontSize: 16, color: Colors.black87),
+                                                ),
+                                              if (dateHeure != null)
+                                                Text(
+                                                  "📅 ${DateFormat('dd/MM/yyyy HH:mm').format(dateHeure)}",
+                                                  style: GoogleFonts.fredoka(fontSize: 14, color: Colors.black54),
+                                                ),
+                                              if (seanceData['code'] != null)
+                                                RichText(
+                                                  text: TextSpan(
+                                                    children: [
+                                                      TextSpan(
+                                                        text: "🔑 Code : ",
+                                                        style: GoogleFonts.fredoka(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
+                                                      ),
+                                                      TextSpan(
+                                                        text: seanceData['code'],
+                                                        style: GoogleFonts.fredoka(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green.shade900),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                            ],
                                           ),
-                                        if (dateHeure != null)
-                                          Text(
-                                            "📅 ${DateFormat('dd/MM/yyyy HH:mm').format(dateHeure)}",
-                                            style: GoogleFonts.fredoka(
-                                              fontSize: 13,
-                                              color: Colors.black54,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: statutSeance() == "Terminé"
+                                                    ? Colors.grey
+                                                    : statutSeance() == "En cours"
+                                                    ? Colors.orange
+                                                    : Colors.blue,
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                statutSeance(),
+                                                textAlign: TextAlign.center,
+                                                style: GoogleFonts.fredoka(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                            const SizedBox(height: 6),
+                                            GestureDetector(
+                                              onTap: peutSupprimer() ? null : () => supprimerSeance(context, seanceDoc.id),
+                                              child: Icon(Icons.delete, color: peutSupprimer() ? Colors.grey : Colors.redAccent, size: 26),
+                                            ),
+                                          ],
+                                        ),
                                       ],
-                                    ),
-                                    trailing: seancePasse
-                                        ? IconButton(
-                                      icon: const Icon(Icons.info,
-                                          color: Colors.grey),
-                                      onPressed: () {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              "⏰ Cette séance est déjà commencée ou terminée, elle ne peut pas être supprimée.",
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    )
-                                        : IconButton(
-                                      icon: const Icon(Icons.delete,
-                                          color: Colors.redAccent),
-                                      onPressed: () => supprimerSeance(
-                                          context, seanceDoc.id),
                                     ),
                                   ),
                                 );
