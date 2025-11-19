@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class SeanceDetailPage extends StatefulWidget {
   final String seanceId;
@@ -36,43 +37,23 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
   bool _isSessionActive = false;
   bool _isPresent = false;
   DateTime? _attendanceTime;
-  final TextEditingController codeController = TextEditingController();
 
-  // 🔹 Nouvelle variable pour stocker le nom de la séance
+  // 🔹 Nom de la séance pour affichage
   String nomSeance = "Chargement...";
 
   @override
   void initState() {
     super.initState();
     _checkSessionStatus();
-    _loadNomSeance(); // 🔹 Charger le nom une seule fois
+    _loadNomSeance();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() {
-        _checkSessionStatus();
-      });
-
-      final now = DateTime.now();
-      final sessionStart = widget.horaire.toDate();
-      final maxDuration = sessionStart.add(const Duration(minutes: 15));
-
-      if (_isSessionActive && !_isPresent && now.isAfter(maxDuration)) {
-        markAbsent();
-        if (mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('⏰ Temps dépassé, vous êtes marqué Absent.'),
-              backgroundColor: Colors.redAccent,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      }
+      setState(() => _checkSessionStatus());
+      _autoMarkAbsentIfLate();
     });
   }
 
-  // 🔹 Fonction pour charger le nom de la séance une seule fois
+  // Charger le nom de la séance depuis Firestore
   Future<void> _loadNomSeance() async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -89,17 +70,16 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
         });
       }
     } catch (e) {
-      print("Erreur lors du chargement du nom de séance : $e");
       setState(() {
         nomSeance = 'Erreur de chargement';
       });
+      print("Erreur lors du chargement du nom de séance : $e");
     }
   }
 
   @override
   void dispose() {
     _timer.cancel();
-    codeController.dispose();
     super.dispose();
   }
 
@@ -108,6 +88,83 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     final sessionStart = widget.horaire.toDate();
     final sessionEnd = sessionStart.add(Duration(minutes: widget.dureeMinutes));
     _isSessionActive = now.isAfter(sessionStart) && now.isBefore(sessionEnd);
+  }
+
+  void _autoMarkAbsentIfLate() {
+    final now = DateTime.now();
+    final sessionStart = widget.horaire.toDate();
+    final maxDuration = sessionStart.add(const Duration(minutes: 15));
+
+    if (_isSessionActive && !_isPresent && now.isAfter(maxDuration)) {
+      markAbsent();
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⏰ Temps dépassé, vous êtes marqué Absent.'),
+            backgroundColor: Colors.redAccent,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> markPresent() async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+    final presencesRef = FirebaseFirestore.instance.collection('presences');
+
+    final existing = await presencesRef
+        .where('userId', isEqualTo: userId)
+        .where('seanceId', isEqualTo: widget.seanceId)
+        .get();
+
+    if (existing.docs.isEmpty) {
+      await presencesRef.add({
+        'userId': userId,
+        'seanceId': widget.seanceId,
+        'date': Timestamp.now(),
+        'classe': widget.classe,
+        'groupe': widget.groupe,
+        'etat': 'Présent',
+      });
+
+      setState(() {
+        _isPresent = true;
+        _attendanceTime = DateTime.now();
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Présence enregistrée !'),
+            backgroundColor: Color(0xFF78c8c0),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> markAbsent() async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+    final presencesRef = FirebaseFirestore.instance.collection('presences');
+
+    final existing = await presencesRef
+        .where('userId', isEqualTo: userId)
+        .where('seanceId', isEqualTo: widget.seanceId)
+        .get();
+
+    if (existing.docs.isEmpty) {
+      await presencesRef.add({
+        'userId': userId,
+        'seanceId': widget.seanceId,
+        'date': Timestamp.now(),
+        'classe': widget.classe,
+        'groupe': widget.groupe,
+        'etat': 'Absent',
+      });
+    }
   }
 
   String getSessionTimer() {
@@ -143,91 +200,38 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
     }
   }
 
-  Future<void> markPresent() async {
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-    final presencesRef = FirebaseFirestore.instance.collection('presences');
-
-    final existing = await presencesRef
-        .where('userId', isEqualTo: userId)
-        .where('seanceId', isEqualTo: widget.seanceId)
-        .get();
-
-    if (existing.docs.isEmpty) {
-      await presencesRef.add({
-        'userId': userId,
-        'seanceId': widget.seanceId,
-        'date': Timestamp.now(),
-        'classe': widget.classe,
-        'groupe': widget.groupe,
-        'etat': 'Présent',
-      });
-
-      setState(() {
-        _isPresent = true;
-        _attendanceTime = DateTime.now();
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Présence enregistrée avec succès !'),
-            backgroundColor: Color(0xFF78c8c0),
-            duration: Duration(seconds: 3),
+  void _openQRScanner() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: const Text("Scanner le QR Code"),
+            backgroundColor: const Color(0xFF78c8c0),
           ),
-        );
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vous avez déjà marqué votre présence.'),
-          backgroundColor: Color(0xFFB45309),
+          body: MobileScanner(
+            onDetect: (capture) {
+              for (final barcode in capture.barcodes) {
+                final value = barcode.rawValue;
+                if (value != null) {
+                  if (value == widget.codeSeance) {
+                    Navigator.pop(context);
+                    markPresent();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("❌ QR Code invalide"),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+          ),
         ),
-      );
-    }
-  }
-
-  Future<void> markAbsent() async {
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-    final presencesRef = FirebaseFirestore.instance.collection('presences');
-
-    final existing = await presencesRef
-        .where('userId', isEqualTo: userId)
-        .where('seanceId', isEqualTo: widget.seanceId)
-        .get();
-
-    if (existing.docs.isEmpty) {
-      await presencesRef.add({
-        'userId': userId,
-        'seanceId': widget.seanceId,
-        'date': Timestamp.now(),
-        'classe': widget.classe,
-        'groupe': widget.groupe,
-        'etat': 'Absent',
-      });
-    }
-  }
-
-  void _checkCode() {
-    if (!_isSessionActive) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La séance n\'est pas active.')),
-      );
-      return;
-    }
-
-    String inputCode = codeController.text.trim();
-    if (inputCode.toLowerCase() == widget.codeSeance.toLowerCase()) {
-      markPresent();
-      codeController.clear();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ Code incorrect'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      codeController.clear();
-    }
+      ),
+    );
   }
 
   @override
@@ -290,8 +294,6 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-
-                    // 🔹 Affichage direct du nom chargé une seule fois
                     RichText(
                       text: TextSpan(
                         children: [
@@ -306,7 +308,7 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
                           TextSpan(
                             text: nomSeance,
                             style: GoogleFonts.fredoka(
-                              color: Colors.green.shade900, // vert foncé pour le nom seulement
+                              color: Colors.green.shade900,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
@@ -314,7 +316,6 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
                         ],
                       ),
                     ),
-
                   ],
                 ),
               ),
@@ -395,62 +396,52 @@ class _SeanceDetailPageState extends State<SeanceDetailPage> {
               ),
               const SizedBox(height: 35),
 
-              // Code + bouton
+              // Bouton scanner QR
               if (!_isPresent && _isSessionActive)
-                Column(
-                  children: [
-                    TextField(
-                      controller: codeController,
-                      decoration: InputDecoration(
-                        labelText: 'Entrez le code de la séance',
-                        labelStyle: GoogleFonts.fredoka(fontSize: 17),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        prefixIcon:
-                        const Icon(Icons.lock, color: Color(0xFF78c8c0)),
+                Center(
+                  child: GestureDetector(
+                    onTap: _openQRScanner,
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF78c8c0),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.4),
+                            spreadRadius: 2,
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 50,
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: _checkCode,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF78c8c0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 3,
-                        ),
-                        child: Text(
-                          "Marquer ma présence",
-                          style: GoogleFonts.fredoka(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
 
+              // Message si séance inactive
               if (!_isSessionActive && !_isPresent)
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(12.0),
                     child: Text(
                       "⏰ La séance n'est pas encore active ou est déjà terminée.",
-                      style: TextStyle(
-                          color: Colors.redAccent,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16),
                       textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
+              const SizedBox(height: 20),
             ],
           ),
         ),

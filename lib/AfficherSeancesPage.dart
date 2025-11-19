@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class AfficherSeancesPage extends StatefulWidget {
   const AfficherSeancesPage({super.key});
@@ -160,20 +161,39 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                                                   style: GoogleFonts.fredoka(fontSize: 14, color: Colors.black54),
                                                 ),
                                               if (seanceData['code'] != null)
-                                                RichText(
-                                                  text: TextSpan(
-                                                    children: [
-                                                      TextSpan(
-                                                        text: "🔑 Code : ",
-                                                        style: GoogleFonts.fredoka(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
-                                                      ),
-                                                      TextSpan(
-                                                        text: seanceData['code'],
-                                                        style: GoogleFonts.fredoka(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green.shade900),
-                                                      ),
-                                                    ],
-                                                  ),
+                                                IconButton(
+                                                  icon: const Icon(Icons.qr_code, size: 28, color: Colors.black),
+                                                  onPressed: () {
+                                                    showDialog(
+                                                      context: context,
+                                                      builder: (context) {
+                                                        return AlertDialog(
+                                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                          title: Text(
+                                                            "QR Code de la séance",
+                                                            style: GoogleFonts.fredoka(fontWeight: FontWeight.bold),
+                                                          ),
+                                                          content: SizedBox(
+                                                            height: 250,
+                                                            width: 250,
+                                                            child: QrImageView(
+                                                              data: seanceData['code'],   // 🔥 Le code généré
+                                                              version: QrVersions.auto,
+                                                              size: 220,
+                                                            ),
+                                                          ),
+                                                          actions: [
+                                                            TextButton(
+                                                              onPressed: () => Navigator.pop(context),
+                                                              child: const Text("Fermer"),
+                                                            )
+                                                          ],
+                                                        );
+                                                      },
+                                                    );
+                                                  },
                                                 ),
+
                                             ],
                                           ),
                                         ),

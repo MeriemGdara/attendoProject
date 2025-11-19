@@ -3,8 +3,10 @@ import 'package:attendo/GestionSeancesPage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
+import 'QRCodePage.dart';
 import 'dashboard_enseignant.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 
 class CreerSeancePage extends StatefulWidget {
   final String enseignantId; // ID de l'enseignant connecté
@@ -207,6 +209,32 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
                         ],
                       ),
                       const SizedBox(height: 15),
+                      // 🔹 Bouton pour afficher le QR Code
+                      Center(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => QRCodePage(code: codeSeance),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.qr_code),
+                          label: const Text("Afficher QR Code"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF2C3E50),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 15),
+
 
                       _buildTextField("Description", Icons.description,
                               (v) => description = v, false,
@@ -360,6 +388,7 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
             ),
           ),
         ],
+
       ),
     );
   }
@@ -391,4 +420,5 @@ class _CreerSeancePageState extends State<CreerSeancePage> {
       onChanged: onChanged,
     );
   }
+
 }

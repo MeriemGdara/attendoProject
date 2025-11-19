@@ -47,6 +47,8 @@ dependencies:
   googleapis: ^13.1.0
   googleapis_auth: ^1.4.0
   flutter_local_notifications: ^18.0.1
+  mobile_scanner: ^3.5.5
+  pretty_qr_code: ^3.0.0
 
 
 
