@@ -239,6 +239,7 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                                             Row(
                                               children: [
                                                 // 🔹 Bouton Edit
+                                                // 🔹 Bouton Edit
                                                 GestureDetector(
                                                   onTap: peutModifier()
                                                       ? () {
@@ -247,16 +248,17 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                                                       MaterialPageRoute(
                                                         builder: (_) => CreerSeancePage(
                                                           enseignantId: enseignantId,
-                                                          // passer éventuellement les données pour préremplir le formulaire
+                                                          seanceId: seanceDoc.id,               // ✅ Passe l'ID de la séance
+                                                          seanceData: seanceData,               // ✅ Passe les données de la séance
                                                         ),
                                                       ),
                                                     );
                                                   }
                                                       : null,
                                                   child: Container(
-                                                    padding: const EdgeInsets.all(6), // un petit padding autour de l'icône
+                                                    padding: const EdgeInsets.all(6),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.white, // le fond reste blanc
+                                                      color: Colors.white,
                                                       borderRadius: BorderRadius.circular(12),
                                                       boxShadow: [
                                                         BoxShadow(
@@ -268,11 +270,12 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                                                     ),
                                                     child: Icon(
                                                       Icons.edit,
-                                                      color: peutModifier() ? Color(0xFF58B6B3) : Colors.grey, // couleur changeante
+                                                      color: peutModifier() ? Color(0xFF58B6B3) : Colors.grey,
                                                       size: 26,
                                                     ),
                                                   ),
                                                 ),
+
 
                                                 const SizedBox(width: 8),
                                                 // 🔹 Bouton Supprimer

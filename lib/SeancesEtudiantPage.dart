@@ -190,6 +190,8 @@ class _SeancesEtudiantPageState extends State<SeancesEtudiantPage> {
               final description = s['description'] ?? '';
               final dureeMinutes = s['duree'] ?? 0;
               final codeSeance = s['code'] ?? '0000';
+              final nomSeance = s['nom'] ?? 'Séance';
+
 
               return FutureBuilder(
                 future: FirebaseFirestore.instance.collection('cours').doc(coursId).get(),
