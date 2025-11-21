@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'dashboard_etudiant.dart';
 import 'dashboard_enseignant.dart';
+import 'forgot_password_page.dart';   // ✅ AJOUT IMPORTANT
 
 class ConnexionPage extends StatefulWidget {
   const ConnexionPage({super.key});
@@ -13,20 +15,13 @@ class ConnexionPage extends StatefulWidget {
 }
 
 class _ConnexionPageState extends State<ConnexionPage> {
-  // ---------------------------------------------------------
-  // 🔹 1️⃣ Contrôleurs des champs
-  // ---------------------------------------------------------
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  // ---------------------------------------------------------
-  // 🔹 2️⃣ Fonction de connexion avec contrôle de saisie
-  // ---------------------------------------------------------
   void login() async {
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
 
-    // ✅ Vérification champs vides
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Tous les champs doivent être remplis")),
@@ -34,7 +29,6 @@ class _ConnexionPageState extends State<ConnexionPage> {
       return;
     }
 
-    // ✅ Vérification format email
     final emailRegex = RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$");
     if (!emailRegex.hasMatch(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -44,13 +38,9 @@ class _ConnexionPageState extends State<ConnexionPage> {
     }
 
     try {
-      // 🔹 Authentification Firebase
-      //vérifie dans Firebase Authentication si l’email + mot de passe existent.
       UserCredential userCredential = await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email, password: password);
 
-      // 🔹 Récupération du rôle depuis Firestore
-      // récupère dans Cloud Firestore les informations associées à cet utilisateur
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
@@ -65,7 +55,6 @@ class _ConnexionPageState extends State<ConnexionPage> {
 
       String role = userDoc['role'];
 
-      // 🔹 Redirection selon le rôle
       if (role == 'etudiant') {
         Navigator.pushReplacement(
           context,
@@ -75,7 +64,7 @@ class _ConnexionPageState extends State<ConnexionPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => DashboardEnseignant(
+            builder: (_) => DashboardEnseignant(
               enseignantId: FirebaseAuth.instance.currentUser?.uid ?? '',
             ),
           ),
@@ -92,16 +81,12 @@ class _ConnexionPageState extends State<ConnexionPage> {
     }
   }
 
-  // ---------------------------------------------------------
-  // 🔹 3️⃣ Interface utilisateur
-  // ---------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF6DD5C9),
       body: Column(
         children: [
-          // 🔹 Haut de page : icône et titre
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(color: Color(0xFF6DD5C9)),
@@ -127,7 +112,6 @@ class _ConnexionPageState extends State<ConnexionPage> {
             ),
           ),
 
-          // 🔹 Corps : formulaire de connexion
           Expanded(
             child: Container(
               width: double.infinity,
@@ -140,8 +124,7 @@ class _ConnexionPageState extends State<ConnexionPage> {
               ),
               child: SingleChildScrollView(
                 child: Padding(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -155,28 +138,26 @@ class _ConnexionPageState extends State<ConnexionPage> {
                       ),
                       const SizedBox(height: 25),
 
-                      // 🔹 Champ email
+                      // Email
                       TextField(
                         controller: emailController,
                         style: GoogleFonts.fredoka(),
                         decoration: InputDecoration(
                           hintText: "Email",
                           hintStyle: GoogleFonts.fredoka(color: Colors.black54),
-                          prefixIcon: const Icon(Icons.email_outlined,
-                              color: Colors.black54),
+                          prefixIcon: const Icon(Icons.email_outlined, color: Colors.black54),
                           filled: true,
                           fillColor: const Color(0xFFF5F5F5),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding:
-                          const EdgeInsets.symmetric(vertical: 18),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 18),
                         ),
                       ),
                       const SizedBox(height: 18),
 
-                      // 🔹 Champ mot de passe
+                      // Password
                       TextField(
                         controller: passwordController,
                         obscureText: true,
@@ -184,27 +165,33 @@ class _ConnexionPageState extends State<ConnexionPage> {
                         decoration: InputDecoration(
                           hintText: "Mot de passe",
                           hintStyle: GoogleFonts.fredoka(color: Colors.black54),
-                          prefixIcon: const Icon(Icons.lock_outline,
-                              color: Colors.black54),
+                          prefixIcon: const Icon(Icons.lock_outline, color: Colors.black54),
                           filled: true,
                           fillColor: const Color(0xFFF5F5F5),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding:
-                          const EdgeInsets.symmetric(vertical: 18),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 18),
                         ),
                       ),
+
                       const SizedBox(height: 8),
 
-                      // 🔹 Mot de passe oublié
+                      // Mot de passe oublié ———— MODIFIÉ ICI
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordPage(),
+                              ),
+                            );
+                          },
                           child: Text(
-                            "Mot de passe oublié?",
+                            "Mot de passe oublié ?",
                             style: GoogleFonts.fredoka(
                               color: Colors.black54,
                               fontSize: 18,
@@ -213,7 +200,7 @@ class _ConnexionPageState extends State<ConnexionPage> {
                         ),
                       ),
 
-                      // 🔹 Bouton connexion
+                      // Btn login
                       Container(
                         width: double.infinity,
                         height: 50,
@@ -224,14 +211,6 @@ class _ConnexionPageState extends State<ConnexionPage> {
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(25),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.4),
-                              spreadRadius: 2,
-                              blurRadius: 5,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
                         ),
                         child: ElevatedButton(
                           onPressed: login,
@@ -255,7 +234,6 @@ class _ConnexionPageState extends State<ConnexionPage> {
 
                       const SizedBox(height: 35),
 
-                      // 🔹 Lien vers création de compte
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -264,8 +242,6 @@ class _ConnexionPageState extends State<ConnexionPage> {
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: GestureDetector(
                               onTap: () {
-
-                                //Ouvre une nouvelle page
                                 Navigator.pushNamed(context, '/creer_compte');
                               },
                               child: Text(
