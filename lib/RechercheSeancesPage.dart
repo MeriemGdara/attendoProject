@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'CreerSeancePage.dart'; // Assure-toi que le chemin est correct
 
 class RechercheSeancesPage extends StatefulWidget {
   final String enseignantId;
@@ -87,7 +89,6 @@ class _RechercheSeancesPageState extends State<RechercheSeancesPage> {
                       }
 
                       final coursDocs = coursSnapshot.data!.docs;
-
                       if (coursDocs.isEmpty) {
                         return Center(
                           child: Text(
@@ -171,10 +172,16 @@ class _RechercheSeancesPageState extends State<RechercheSeancesPage> {
                                         return "Commence dans ${minutes.abs()}m ${secondes.abs()}s";
                                       }
 
+                                      // Conditions Edit & Supprimer
+                                      bool peutModifier() {
+                                        if (dateHeure == null) return false;
+                                        return maintenant.isBefore(dateHeure);
+                                      }
+
                                       bool peutSupprimer() {
                                         if (dateHeure == null) return false;
                                         final finSeance = dateHeure.add(Duration(minutes: duree));
-                                        return !(maintenant.isBefore(finSeance) && maintenant.isBefore(dateHeure));
+                                        return maintenant.isBefore(dateHeure);
                                       }
 
                                       return Container(
@@ -224,29 +231,6 @@ class _RechercheSeancesPageState extends State<RechercheSeancesPage> {
                                                           color: Colors.black54,
                                                         ),
                                                       ),
-                                                    if (seanceData['code'] != null)
-                                                      RichText(
-                                                        text: TextSpan(
-                                                          children: [
-                                                            TextSpan(
-                                                              text: "🔑 Code : ",
-                                                              style: GoogleFonts.fredoka(
-                                                                fontSize: 14,
-                                                                fontWeight: FontWeight.bold,
-                                                                color: Colors.black,
-                                                              ),
-                                                            ),
-                                                            TextSpan(
-                                                              text: seanceData['code'],
-                                                              style: GoogleFonts.fredoka(
-                                                                fontSize: 14,
-                                                                fontWeight: FontWeight.bold,
-                                                                color: Colors.green.shade900,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
                                                   ],
                                                 ),
                                               ),
@@ -275,15 +259,109 @@ class _RechercheSeancesPageState extends State<RechercheSeancesPage> {
                                                     ),
                                                   ),
                                                   const SizedBox(height: 6),
-                                                  GestureDetector(
-                                                    onTap: peutSupprimer()
-                                                        ? null
-                                                        : () => supprimerSeance(context, seanceDoc.id),
-                                                    child: Icon(
-                                                      Icons.delete,
-                                                      color: peutSupprimer() ? Colors.grey : Colors.redAccent,
-                                                      size: 26,
-                                                    ),
+                                                  Row(
+                                                    children: [
+                                                      // Edit
+                                                      GestureDetector(
+                                                        onTap: peutModifier()
+                                                            ? () {
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder: (_) => CreerSeancePage(
+                                                                enseignantId: widget.enseignantId,
+                                                              ),
+                                                            ),
+                                                          );
+                                                        }
+                                                            : null,
+                                                        child: Container(
+                                                          padding: const EdgeInsets.all(6),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.white,
+                                                            borderRadius: BorderRadius.circular(12),
+                                                            boxShadow: [
+                                                              BoxShadow(
+                                                                color: Colors.black.withOpacity(0.05),
+                                                                blurRadius: 4,
+                                                                offset: const Offset(1, 1),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          child: Icon(
+                                                            Icons.edit,
+                                                            color: peutModifier() ? const Color(0xFF58B6B3) : Colors.grey,
+                                                            size: 26,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      // Supprimer
+                                                      GestureDetector(
+                                                        onTap: peutSupprimer()
+                                                            ? () => supprimerSeance(context, seanceDoc.id)
+                                                            : null,
+                                                        child: Icon(
+                                                          Icons.delete,
+                                                          color: peutSupprimer() ? Colors.redAccent : Colors.grey,
+                                                          size: 26,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      // QR code
+                                                      if (seanceData['code'] != null)
+                                                        GestureDetector(
+                                                          onTap: () {
+                                                            showDialog(
+                                                              context: context,
+                                                              builder: (context) => AlertDialog(
+                                                                shape: RoundedRectangleBorder(
+                                                                    borderRadius: BorderRadius.circular(20)),
+                                                                title: Text("QR Code de la séance",
+                                                                    style: GoogleFonts.fredoka(
+                                                                        fontWeight: FontWeight.bold)),
+                                                                content: SizedBox(
+                                                                  height: 250,
+                                                                  width: 250,
+                                                                  child: QrImageView(
+                                                                    data: seanceData['code'],
+                                                                    version: QrVersions.auto,
+                                                                    size: 220,
+                                                                  ),
+                                                                ),
+                                                                actions: [
+                                                                  TextButton(
+                                                                    onPressed: () => Navigator.pop(context),
+                                                                    child: Text(
+                                                                      "Fermer",
+                                                                      style: GoogleFonts.fredoka(
+                                                                        fontWeight: FontWeight.bold,
+                                                                        fontSize: 18,
+                                                                        color: Colors.black, // ou la couleur que tu veux
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            );
+                                                          },
+                                                          child: Container(
+                                                            padding: const EdgeInsets.all(6),
+                                                            decoration: BoxDecoration(
+                                                              color: Colors.white,
+                                                              borderRadius: BorderRadius.circular(12),
+                                                              boxShadow: [
+                                                                BoxShadow(
+                                                                  color: Colors.black.withOpacity(0.05),
+                                                                  blurRadius: 4,
+                                                                  offset: const Offset(1, 1),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            child: const Icon(Icons.qr_code, color: Colors.black, size: 26),
+                                                          ),
+                                                        ),
+                                                    ],
                                                   ),
                                                 ],
                                               ),

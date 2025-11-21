@@ -1,9 +1,9 @@
 import 'package:attendo/GestionCoursPage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'AfficherCoursPage.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'AjoutCours.dart'; // Assure-toi que le chemin est correct
 
 class RechercheCoursPage extends StatefulWidget {
   const RechercheCoursPage({super.key});
@@ -26,6 +26,62 @@ class _RechercheCoursPageState extends State<RechercheCoursPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       enseignantId = user.uid;
+    }
+  }
+
+  // 🔹 Fonction de suppression avec condition
+  Future<void> _supprimerCours(BuildContext context, String coursId) async {
+    final now = DateTime.now();
+
+    final seancesSnapshot = await FirebaseFirestore.instance
+        .collection('séances')
+        .where('courId', isEqualTo: coursId)
+        .get();
+
+    bool seanceCommence = false;
+
+    for (var doc in seancesSnapshot.docs) {
+      final data = doc.data();
+      final horaire = data['horaire'] as Timestamp?;
+      if (horaire != null && horaire.toDate().isBefore(now)) {
+        seanceCommence = true;
+        break;
+      }
+    }
+
+    if (seanceCommence) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "⏰ Impossible de supprimer ce cours, il a des séances déjà commencées ou terminées.",
+            ),
+            backgroundColor: Colors.grey,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } else {
+      final batch = FirebaseFirestore.instance.batch();
+
+      for (var doc in seancesSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      final coursRef = FirebaseFirestore.instance.collection('cours').doc(coursId);
+      batch.delete(coursRef);
+
+      await batch.commit();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("✅ Cours et ses séances supprimés avec succès"),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -57,11 +113,9 @@ class _RechercheCoursPageState extends State<RechercheCoursPage> {
       ),
       body: Stack(
         children: [
-          // --- Image de fond ---
           Positioned.fill(
             child: Image.asset('assets/images/backgroudCours.jpg', fit: BoxFit.cover),
           ),
-          const SizedBox(height: 60),
           SafeArea(
             child: Column(
               children: [
@@ -94,7 +148,6 @@ class _RechercheCoursPageState extends State<RechercheCoursPage> {
                             child: CircularProgressIndicator(color: Colors.white));
                       }
 
-                      // Filtrer selon le texte saisi
                       final filtered = snapshot.data!.docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         return (data['nomCours'] ?? '')
@@ -115,6 +168,8 @@ class _RechercheCoursPageState extends State<RechercheCoursPage> {
                         padding: const EdgeInsets.only(top:0, left: 16, right: 16, bottom: 10),
                         children: filtered.map((doc) {
                           final data = doc.data() as Map<String, dynamic>;
+                          final coursId = doc.id;
+
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
                             child: Card(
@@ -122,25 +177,71 @@ class _RechercheCoursPageState extends State<RechercheCoursPage> {
                                   borderRadius: BorderRadius.circular(16)),
                               elevation: 8,
                               shadowColor: Colors.black.withOpacity(0.3),
-                              color: const Color(0xFFDFF7F6), // couleur douce
+                              color: const Color(0xFFDFF7F6),
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      data['nomCours'] ?? 'Sans titre',
-                                      style: GoogleFonts.fredoka(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 20,
-                                        color: const Color(0xFF4C9A97),
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            data['nomCours'] ?? 'Sans titre',
+                                            style: GoogleFonts.fredoka(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 20,
+                                              color: const Color(0xFF4C9A97),
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        Row(
+                                          children: [
+                                            // 🔹 Bouton Éditer
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: IconButton(
+                                                icon: const Icon(Icons.edit,
+                                                    color: Colors.black, size: 24),
+                                                onPressed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) => AjoutCours(
+                                                        coursId: coursId,
+                                                        data: data,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            // 🔹 Bouton Supprimer
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.red.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: IconButton(
+                                                icon: const Icon(Icons.delete,
+                                                    color: Colors.red, size: 24),
+                                                onPressed: () => _supprimerCours(context, coursId),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                     const SizedBox(height: 5),
                                     Text(
-                                      "${data['description'] ?? ''}",
+                                      data['description'] ?? '',
                                       style: GoogleFonts.fredoka(
                                         fontSize: 16,
                                         color: Colors.black87,

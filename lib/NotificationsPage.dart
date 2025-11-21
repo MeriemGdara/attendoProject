@@ -22,10 +22,12 @@ class _NotificationsPageState extends State<NotificationsPage> with TickerProvid
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _checkAbsencesAndNotify();
+    _listenNewNotifications();
+    _listenNewMessages();
     print("User ID connecté: $userId");
   }
 
-  // Vérifie les absences et crée les notifications correspondantes
+  // -------------------- Vérification des absences --------------------
   Future<void> _checkAbsencesAndNotify() async {
     final presencesSnapshot = await _firestore
         .collection('presences')
@@ -87,6 +89,89 @@ class _NotificationsPageState extends State<NotificationsPage> with TickerProvid
     }
   }
 
+  // -------------------- ALERTES TOP --------------------
+  void _showTopAlert(String message, {bool isMessage = false, String? senderName}) {
+    final overlay = Overlay.of(context);
+    if (overlay == null) return;
+
+    final emoji = isMessage ? "📩" : "🔔";
+    final displayMessage = senderName != null ? "$emoji $senderName : $message" : "$emoji $message";
+
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 50,
+        left: 16,
+        right: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: AnimatedSlide(
+            duration: const Duration(milliseconds: 300),
+            offset: Offset(0, 0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Text(
+                displayMessage,
+                style: GoogleFonts.fredoka(
+                    fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+    Future.delayed(const Duration(seconds: 3)).then((_) => overlayEntry.remove());
+  }
+
+  void _listenNewNotifications() {
+    _firestore
+        .collection('notifications')
+        .where('etudiantId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .listen((snapshot) {
+      for (var docChange in snapshot.docChanges) {
+        if (docChange.type == DocumentChangeType.added) {
+          _showTopAlert(docChange.doc['message'], isMessage: false);
+        }
+      }
+    });
+  }
+
+  void _listenNewMessages() {
+    _firestore
+        .collection('messages')
+        .where('etudiantId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .listen((snapshot) {
+      for (var docChange in snapshot.docChanges) {
+        if (docChange.type == DocumentChangeType.added &&
+            docChange.doc['senderId'] != userId) {
+          final teacherId = docChange.doc['enseignantId'];
+
+          _firestore.collection('users').doc(teacherId).get().then((teacherDoc) {
+            final teacherName = teacherDoc['name'] ?? "Enseignant";
+            _showTopAlert(docChange.doc['message'], isMessage: true, senderName: teacherName);
+          });
+        }
+      }
+    });
+  }
+
+  // -------------------- BUILD --------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -263,9 +348,8 @@ class _NotificationsPageState extends State<NotificationsPage> with TickerProvid
                     builder: (context, teacherSnapshot) {
                       if (!teacherSnapshot.hasData) return const SizedBox();
                       final teacherName = teacherSnapshot.data!['name'] ?? "Enseignant";
-                      final teacherInitials = teacherName.split(' ').map((e) => e[0]).join().toUpperCase();
 
-                      return _buildMessageCard(teacherId, msgs, teacherName, teacherInitials, lastMsg, isRead);
+                      return _buildMessageCard(teacherId, msgs, teacherName, lastMsg, isRead);
                     },
                   );
                 }).toList(),
@@ -277,6 +361,7 @@ class _NotificationsPageState extends State<NotificationsPage> with TickerProvid
     );
   }
 
+  // -------------------- Widgets --------------------
   Widget _buildEmptyState(IconData icon, String title, String subtitle) {
     return Center(
       child: Column(
@@ -359,7 +444,7 @@ class _NotificationsPageState extends State<NotificationsPage> with TickerProvid
   }
 
   Widget _buildMessageCard(String teacherId, List<QueryDocumentSnapshot> msgs, String teacherName,
-      String teacherInitials, String lastMsg, bool isRead) {
+      String lastMsg, bool isRead) {
     bool showUnreadBadge = !isRead && msgs.last['senderId'] != userId;
 
     return Container(
@@ -378,13 +463,11 @@ class _NotificationsPageState extends State<NotificationsPage> with TickerProvid
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () async {
-            // Marquer uniquement les messages reçus comme lus
             for (var msg in msgs) {
               if (msg['isRead'] == false && msg['senderId'] != userId) {
                 await msg.reference.update({'isRead': true});
               }
             }
-
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -396,9 +479,6 @@ class _NotificationsPageState extends State<NotificationsPage> with TickerProvid
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-
-
-
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -412,21 +492,20 @@ class _NotificationsPageState extends State<NotificationsPage> with TickerProvid
                               style: GoogleFonts.fredoka(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
-                                color: Colors.black87, // couleur pour "Enseignant :"
+                                color: Colors.black87,
                               ),
                             ),
                             TextSpan(
-                              text: teacherName, // nom du professeur
+                              text: teacherName,
                               style: GoogleFonts.fredoka(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
-                                color: const Color(0xFF2B6D6A), // couleur différente pour le nom
+                                color: const Color(0xFF2B6D6A),
                               ),
                             ),
                           ],
                         ),
                       ),
-
                       const SizedBox(height: 4),
                       Text(lastMsg,
                           style: GoogleFonts.fredoka(fontSize: 16, color: Colors.black, fontWeight: FontWeight.w400),
@@ -438,13 +517,20 @@ class _NotificationsPageState extends State<NotificationsPage> with TickerProvid
                 const SizedBox(width: 12),
                 if (showUnreadBadge)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(color: const Color(0xFFFF6B6B), borderRadius: BorderRadius.circular(12)),
-                    child: Text("NON LU",
-                        style: GoogleFonts.fredoka(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                  )
-                else
-                  Icon(Icons.check_circle_rounded, size: 22, color: const Color(0xFF78c8c0).withOpacity(0.6)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF6B6B),
+                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                    ),
+                    child: Text(
+                      "Nouveau",
+                      style: GoogleFonts.fredoka(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

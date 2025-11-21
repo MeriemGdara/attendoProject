@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'CreerSeancePage.dart'; // Assure-toi que le chemin est correct
 
 class AfficherSeancesPage extends StatefulWidget {
   const AfficherSeancesPage({super.key});
@@ -35,7 +36,8 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
       appBar: AppBar(
         title: Text(
           "Mes Séances",
-          style: GoogleFonts.fredoka(fontSize: 25, fontWeight: FontWeight.bold, color: Colors.black),
+          style: GoogleFonts.fredoka(
+              fontSize: 25, fontWeight: FontWeight.bold, color: Colors.black),
         ),
         centerTitle: true,
         backgroundColor: const Color(0xFF78c8c0),
@@ -61,7 +63,8 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                 final coursDocs = coursSnapshot.data!.docs;
                 if (coursDocs.isEmpty) {
                   return Center(
-                    child: Text("Aucun cours trouvé.", style: GoogleFonts.fredoka(fontSize: 20, color: Colors.black)),
+                    child: Text("Aucun cours trouvé.",
+                        style: GoogleFonts.fredoka(fontSize: 20, color: Colors.black)),
                   );
                 }
 
@@ -123,10 +126,15 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                                   return "Commence dans ${minutes.abs()}m ${secondes.abs()}s";
                                 }
 
+                                bool peutModifier() {
+                                  if (dateHeure == null) return false;
+                                  return maintenant.isBefore(dateHeure);
+                                }
+
                                 bool peutSupprimer() {
                                   if (dateHeure == null) return false;
                                   final finSeance = dateHeure.add(Duration(minutes: duree));
-                                  return !(maintenant.isBefore(finSeance) && maintenant.isBefore(dateHeure));
+                                  return maintenant.isBefore(dateHeure);
                                 }
 
                                 return Container(
@@ -135,7 +143,9 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(2, 2))],
+                                    boxShadow: [
+                                      BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(2, 2))
+                                    ],
                                   ),
                                   child: IntrinsicHeight(
                                     child: Row(
@@ -147,18 +157,23 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                                             children: [
                                               Text(
                                                 seanceData['nom'] ?? 'Séance sans titre',
-                                                style: GoogleFonts.fredoka(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.black),
+                                                style: GoogleFonts.fredoka(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 20,
+                                                    color: Colors.black),
                                               ),
                                               const SizedBox(height: 4),
                                               if (seanceData['description'] != null)
                                                 Text(
                                                   seanceData['description'],
-                                                  style: GoogleFonts.fredoka(fontSize: 16, color: Colors.black87),
+                                                  style: GoogleFonts.fredoka(
+                                                      fontSize: 16, color: Colors.black87),
                                                 ),
                                               if (dateHeure != null)
                                                 Text(
                                                   "📅 ${DateFormat('dd/MM/yyyy HH:mm').format(dateHeure)}",
-                                                  style: GoogleFonts.fredoka(fontSize: 14, color: Colors.black54),
+                                                  style: GoogleFonts.fredoka(
+                                                      fontSize: 14, color: Colors.black54),
                                                 ),
                                               if (seanceData['code'] != null)
                                                 IconButton(
@@ -168,32 +183,32 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                                                       context: context,
                                                       builder: (context) {
                                                         return AlertDialog(
-                                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                          shape: RoundedRectangleBorder(
+                                                              borderRadius: BorderRadius.circular(20)),
                                                           title: Text(
                                                             "QR Code de la séance",
-                                                            style: GoogleFonts.fredoka(fontWeight: FontWeight.bold),
+                                                            style: GoogleFonts.fredoka(
+                                                                fontWeight: FontWeight.bold),
                                                           ),
                                                           content: SizedBox(
                                                             height: 250,
                                                             width: 250,
                                                             child: QrImageView(
-                                                              data: seanceData['code'],   // 🔥 Le code généré
+                                                              data: seanceData['code'],
                                                               version: QrVersions.auto,
                                                               size: 220,
                                                             ),
                                                           ),
                                                           actions: [
                                                             TextButton(
-                                                              onPressed: () => Navigator.pop(context),
-                                                              child: const Text("Fermer"),
-                                                            )
+                                                                onPressed: () => Navigator.pop(context),
+                                                                child: const Text("Fermer"))
                                                           ],
                                                         );
                                                       },
                                                     );
                                                   },
                                                 ),
-
                                             ],
                                           ),
                                         ),
@@ -215,16 +230,61 @@ class _AfficherSeancesPageState extends State<AfficherSeancesPage> {
                                                 statutSeance(),
                                                 textAlign: TextAlign.center,
                                                 style: GoogleFonts.fredoka(
-                                                  color: Colors.white,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
+                                                    color: Colors.white,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold),
                                               ),
                                             ),
                                             const SizedBox(height: 6),
-                                            GestureDetector(
-                                              onTap: peutSupprimer() ? null : () => supprimerSeance(context, seanceDoc.id),
-                                              child: Icon(Icons.delete, color: peutSupprimer() ? Colors.grey : Colors.redAccent, size: 26),
+                                            Row(
+                                              children: [
+                                                // 🔹 Bouton Edit
+                                                GestureDetector(
+                                                  onTap: peutModifier()
+                                                      ? () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) => CreerSeancePage(
+                                                          enseignantId: enseignantId,
+                                                          // passer éventuellement les données pour préremplir le formulaire
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                      : null,
+                                                  child: Container(
+                                                    padding: const EdgeInsets.all(6), // un petit padding autour de l'icône
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white, // le fond reste blanc
+                                                      borderRadius: BorderRadius.circular(12),
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: Colors.black.withOpacity(0.05),
+                                                          blurRadius: 4,
+                                                          offset: const Offset(1, 1),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.edit,
+                                                      color: peutModifier() ? Color(0xFF58B6B3) : Colors.grey, // couleur changeante
+                                                      size: 26,
+                                                    ),
+                                                  ),
+                                                ),
+
+                                                const SizedBox(width: 8),
+                                                // 🔹 Bouton Supprimer
+                                                GestureDetector(
+                                                  onTap: peutSupprimer()
+                                                      ? () => supprimerSeance(context, seanceDoc.id)
+                                                      : null,
+                                                  child: Icon(Icons.delete,
+                                                      color: peutSupprimer() ? Colors.redAccent : Colors.grey,
+                                                      size: 26),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),

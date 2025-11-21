@@ -3,15 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'AjoutCours.dart'; // Assure-toi que le chemin est correct
 
 class AfficherCoursPage extends StatelessWidget {
   const AfficherCoursPage({super.key});
 
-  // 🔹 Fonction pour supprimer un cours et ses séances non commencées
   Future<void> _supprimerCours(BuildContext context, String coursId) async {
     final now = DateTime.now();
 
-    // 🔹 Récupérer toutes les séances du cours
     final seancesSnapshot = await FirebaseFirestore.instance
         .collection('séances')
         .where('courId', isEqualTo: coursId)
@@ -29,7 +28,6 @@ class AfficherCoursPage extends StatelessWidget {
     }
 
     if (seanceCommence) {
-      // 🔹 Au moins une séance est commencée
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -42,7 +40,6 @@ class AfficherCoursPage extends StatelessWidget {
         );
       }
     } else {
-      // 🔹 Supprimer toutes les séances liées au cours et le cours lui-même
       final batch = FirebaseFirestore.instance.batch();
 
       for (var doc in seancesSnapshot.docs) {
@@ -96,15 +93,12 @@ class AfficherCoursPage extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          // --- Image de fond ---
           Positioned.fill(
             child: Image.asset(
               'assets/images/backgroudCours.jpg',
               fit: BoxFit.cover,
             ),
           ),
-
-          // --- Contenu principal ---
           SafeArea(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -137,16 +131,14 @@ class AfficherCoursPage extends StatelessWidget {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.only(
-                      top: 50, left: 16, right: 16, bottom: 16),
+                  padding: const EdgeInsets.only(top: 50, left: 16, right: 16, bottom: 16),
                   itemCount: cours.length,
                   itemBuilder: (context, index) {
                     final data = cours[index].data() as Map<String, dynamic>;
                     final coursId = cours[index].id;
 
                     return Padding(
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 1, vertical: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 5),
                       child: Card(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -160,8 +152,7 @@ class AfficherCoursPage extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
                                     child: Text(
@@ -175,17 +166,42 @@ class AfficherCoursPage extends StatelessWidget {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: IconButton(
-                                      icon: const Icon(Icons.delete,
-                                          color: Colors.red, size: 24),
-                                      onPressed: () =>
-                                          _supprimerCours(context, coursId),
-                                    ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: IconButton(
+                                          icon: const Icon(Icons.edit,
+                                              color: Colors.black, size: 24),
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => AjoutCours(
+                                                  coursId: coursId,
+                                                  data: data,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: IconButton(
+                                          icon: const Icon(Icons.delete,
+                                              color: Colors.red, size: 24),
+                                          onPressed: () => _supprimerCours(context, coursId),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

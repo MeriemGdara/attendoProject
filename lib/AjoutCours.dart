@@ -6,7 +6,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dashboard_enseignant.dart';
 
 class AjoutCours extends StatefulWidget {
-  const AjoutCours({super.key});
+  final String? coursId; // null = ajout, non-null = modification
+  final Map<String, dynamic>? data;
+
+  const AjoutCours({super.key, this.coursId, this.data});
 
   @override
   _AjoutCoursState createState() => _AjoutCoursState();
@@ -19,11 +22,19 @@ class _AjoutCoursState extends State<AjoutCours> {
   String nomEnseignant = '';
   String enseignantId = '';
   bool _isLoading = true;
-  int maxAbsences=0;
+  int maxAbsences = 0;
 
   @override
   void initState() {
     super.initState();
+
+    // Si on modifie, pré-remplir les champs
+    if (widget.data != null) {
+      nomCours = widget.data!['nomCours'] ?? '';
+      description = widget.data!['description'] ?? '';
+      maxAbsences = widget.data!['maxAbsences'] ?? 0;
+    }
+
     _loadEnseignantData();
   }
 
@@ -65,18 +76,33 @@ class _AjoutCoursState extends State<AjoutCours> {
       _formKey.currentState!.save();
 
       try {
-        await FirebaseFirestore.instance.collection('cours').add({
-          'nomCours': nomCours,
-          'description': description,
-          'nomEnseignant': nomEnseignant,
-          'enseignantId': enseignantId,
-          'dateCreation': Timestamp.now(),
-          'maxAbsences' :maxAbsences,
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Cours ajouté avec succès !')),
-        );
+        if (widget.coursId == null) {
+          // AJOUT
+          await FirebaseFirestore.instance.collection('cours').add({
+            'nomCours': nomCours,
+            'description': description,
+            'nomEnseignant': nomEnseignant,
+            'enseignantId': enseignantId,
+            'dateCreation': Timestamp.now(),
+            'maxAbsences': maxAbsences,
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('✅ Cours ajouté avec succès !')),
+          );
+        } else {
+          // MODIFICATION
+          await FirebaseFirestore.instance
+              .collection('cours')
+              .doc(widget.coursId)
+              .update({
+            'nomCours': nomCours,
+            'description': description,
+            'maxAbsences': maxAbsences,
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('✏️ Cours modifié avec succès !')),
+          );
+        }
 
         Navigator.pushReplacement(
           context,
@@ -88,7 +114,7 @@ class _AjoutCoursState extends State<AjoutCours> {
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Erreur lors de l\'ajout : $e')),
+          SnackBar(content: Text('❌ Erreur : $e')),
         );
       }
     }
@@ -106,18 +132,12 @@ class _AjoutCoursState extends State<AjoutCours> {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // --- Image d’arrière-plan ---
           Positioned.fill(
             child: Image.asset(
               'assets/images/backgroundCours1.jpg',
               fit: BoxFit.cover,
             ),
           ),
-
-
-
-
-          // --- Flèche retour positionnée au-dessus de l’image ---
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.only(left: 10, top: 10),
@@ -126,17 +146,12 @@ class _AjoutCoursState extends State<AjoutCours> {
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => GestionCoursPage(),
-
-                    ),
+                    MaterialPageRoute(builder: (context) => GestionCoursPage()),
                   );
                 },
               ),
             ),
           ),
-
-          // --- Contenu principal ---
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -163,7 +178,7 @@ class _AjoutCoursState extends State<AjoutCours> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Créer un nouveau cours",
+                        widget.coursId == null ? "Créer un nouveau cours" : "Modifier le cours",
                         style: GoogleFonts.fredoka(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
@@ -171,42 +186,36 @@ class _AjoutCoursState extends State<AjoutCours> {
                         ),
                       ),
                       const SizedBox(height: 25),
-
                       TextFormField(
+                        initialValue: nomCours,
                         decoration: _inputDecoration("Nom du cours", Icons.book),
                         validator: (value) =>
                         value!.isEmpty ? "Entrez le nom du cours" : null,
                         onSaved: (value) => nomCours = value!,
                       ),
                       const SizedBox(height: 15),
-
                       TextFormField(
-                        decoration:
-                        _inputDecoration("Description", Icons.description),
+                        initialValue: description,
+                        decoration: _inputDecoration("Description", Icons.description),
                         validator: (value) =>
                         value!.isEmpty ? "Entrez une description" : null,
                         onSaved: (value) => description = value!,
                         maxLines: 3,
                       ),
                       const SizedBox(height: 15),
-                      /// 🔥🔥 Champ Nombre max des absences
                       TextFormField(
+                        initialValue: maxAbsences.toString(),
                         decoration: _inputDecoration(
                             "Nombre maximum d'absences", Icons.warning),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Entrez un nombre";
-                          }
-                          if (int.tryParse(value) == null) {
-                            return "Entrez un nombre valide";
-                          }
+                          if (value == null || value.isEmpty) return "Entrez un nombre";
+                          if (int.tryParse(value) == null) return "Entrez un nombre valide";
                           return null;
                         },
                         onSaved: (value) => maxAbsences = int.parse(value!),
                       ),
                       const SizedBox(height: 20),
-
                       const Text(
                         "Enseignant",
                         style: TextStyle(
@@ -218,21 +227,15 @@ class _AjoutCoursState extends State<AjoutCours> {
                       const SizedBox(height: 5),
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                              color: const Color(0xFF58B6B3), width: 1),
+                          border: Border.all(color: const Color(0xFF58B6B3), width: 1),
                         ),
                         child: Row(
                           children: [
-                            const Icon(
-                              Icons.person,
-                              color: Color(0xFF58B6B3),
-                              size: 25,
-                            ),
+                            const Icon(Icons.person, color: Color(0xFF58B6B3), size: 25),
                             const SizedBox(width: 10),
                             Text(
                               nomEnseignant,
@@ -246,22 +249,23 @@ class _AjoutCoursState extends State<AjoutCours> {
                         ),
                       ),
                       const SizedBox(height: 30),
-
                       Center(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF58B6B3),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 45, vertical: 14),
+                            padding: const EdgeInsets.symmetric(horizontal: 45, vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(25),
                             ),
                             elevation: 4,
                           ),
-                          icon: const Icon(Icons.add, color: Colors.white),
-                          label: const Text(
-                            'Ajouter le cours',
-                            style: TextStyle(
+                          icon: Icon(
+                            widget.coursId == null ? Icons.add : Icons.edit,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            widget.coursId == null ? 'Ajouter le cours' : 'Modifier le cours',
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -294,8 +298,7 @@ class _AjoutCoursState extends State<AjoutCours> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
-        borderSide:
-        const BorderSide(color: Color(0xFF58B6B3), width: 2),
+        borderSide: const BorderSide(color: Color(0xFF58B6B3), width: 2),
       ),
     );
   }
